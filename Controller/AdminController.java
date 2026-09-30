@@ -1,6 +1,8 @@
 package Controller;
 
 import View.AdminView;
+import View.LoginView;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -48,6 +50,10 @@ public class AdminController {
         public void actionPerformed(ActionEvent e) {
             adminView.showMessage("Logged out successfully!");
             adminView.dispose();
+
+            LoginView loginView = new LoginView();
+            new LoginController(loginView);
+            loginView.setVisible(true); 
         }
     }
 }
