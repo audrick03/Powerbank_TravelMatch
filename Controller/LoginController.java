@@ -4,6 +4,9 @@ import Model.User;
 import Repository.UserRepository;
 import View.AdminView;
 import View.LoginView;
+import View.PreferenceView;
+import Controller.PreferenceController;
+
 import java.util.Optional;
 
 public class LoginController {
@@ -41,9 +44,15 @@ public class LoginController {
         if (user.isAdmin()) {
             openAdminView();
         } else {
-            loginView.showMessage(
-                "Login successful. The normal-user area is not available yet.");
+            openPreferenceView();
         }
+    }
+
+    private void openPreferenceView() {
+        PreferenceView preferenceView = new PreferenceView();
+        loginView.closeView();
+        preferenceView.setVisible(true);                
+        
     }
 
     private void openAdminView() {
