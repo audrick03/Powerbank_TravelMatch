@@ -5,6 +5,8 @@ import View.PreferenceView;
 
 import java.util.Arrays;
 
+// test
+
 public class PreferenceController {
 
     private final PreferenceView view;
