@@ -134,6 +134,10 @@ public class LoginView extends JFrame {
         errorLabel.setText(message);
     }
 
+    public void showMessage(String message) {
+        JOptionPane.showMessageDialog(this, message);
+    }
+
     public void clearError() {
         errorLabel.setText(" ");
     }
@@ -145,6 +149,10 @@ public class LoginView extends JFrame {
         passwordField.setEchoChar('\u2022');
         clearError();
         usernameField.requestFocusInWindow();
+    }
+
+    public void setUsername(String username) {
+        usernameField.setText(username);
     }
 
     public void showView() {

@@ -1,11 +1,12 @@
 package Controller;
 
+import Model.PreferenceModel;
 import Model.User;
 import Repository.UserRepository;
 import View.AdminView;
 import View.LoginView;
 import View.PreferenceView;
-import Controller.PreferenceController;
+import View.RegisterView;
 
 import java.util.Optional;
 
@@ -26,8 +27,7 @@ public class LoginController {
         this.loginView = loginView;
         this.userRepository = userRepository;
         loginView.addLoginListener(event -> login());
-        loginView.addRegisterListener(event ->
-            loginView.showMessage("Account registration is not available yet."));
+        loginView.addRegisterListener(event -> openRegisterView());
     }
 
     private void login() {
@@ -48,11 +48,30 @@ public class LoginController {
         }
     }
 
+    private void openRegisterView() {
+        RegisterView registerView = new RegisterView();
+        new RegisterController(
+                registerView,
+                userRepository,
+                user -> {
+                    loginView.setUsername(user.getUsername());
+                    loginView.showView();
+                    loginView.showMessage("Account created. You can now log in.");
+                },
+                loginView::showView
+        );
+        loginView.setVisible(false);
+        registerView.showView();
+    }
+
     private void openPreferenceView() {
         PreferenceView preferenceView = new PreferenceView();
+        PreferenceModel preferenceModel = new PreferenceModel();
+
+        new PreferenceController(preferenceView, preferenceModel);
+
         loginView.closeView();
-        preferenceView.setVisible(true);                
-        
+        preferenceView.showView();
     }
 
     private void openAdminView() {

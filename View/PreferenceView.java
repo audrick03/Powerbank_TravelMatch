@@ -29,6 +29,7 @@ public class PreferenceView extends JFrame {
 
     private final JButton recommendButton;
     private final JButton resetButton;
+    private final JButton forwardButton;
 
     private final JLabel messageLabel;
 
@@ -65,6 +66,7 @@ public class PreferenceView extends JFrame {
 
         recommendButton = new JButton("Find Destinations");
         resetButton = new JButton("Reset");
+        forwardButton = new JButton("Proceed to Recommendations");
         messageLabel = new JLabel(" ");
 
         initComponents();
@@ -85,7 +87,7 @@ public class PreferenceView extends JFrame {
         recommendButton.setFocusPainted(false);
 
         resetButton.setFocusPainted(false);
-
+        forwardButton.setFocusPainted(false);
         messageLabel.setForeground(ERROR);
         messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
     }
@@ -165,6 +167,10 @@ public class PreferenceView extends JFrame {
         gc.ipady = 0;
         content.add(resetButton, gc);
 
+        gc.gridy = row++;
+        gc.ipady = 0;
+        content.add(forwardButton, gc);
+
         setContentPane(content);
     }
 
@@ -203,6 +209,10 @@ public class PreferenceView extends JFrame {
 
     public void addResetListener(ActionListener listener) {
         resetButton.addActionListener(listener);
+    }
+
+    public void addForwardListener(ActionListener listener) {
+        forwardButton.addActionListener(listener);
     }
 
     // ---------- Update Screen ----------
