@@ -1,8 +1,6 @@
 package Controller;
 
 import View.AdminView;
-import View.LoginView;
-
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -14,8 +12,10 @@ public class AdminController {
         this.adminView.addDestinationListener(new AddDestinationListener());
         this.adminView.viewStatsListener(new ViewStatsListener());
         this.adminView.logoutListener(new LogoutListener());
+        this.adminView.clearListener(new ClearListener()); // ✅ Added clear button listener
     }
 
+    // ➕ Add Destination
     class AddDestinationListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -25,6 +25,12 @@ public class AdminController {
             String fee = adminView.getFee();
             String category = adminView.getCategory();
 
+            // Basic validation before saving
+            if (name.isEmpty() || location.isEmpty() || season.isEmpty() || fee.isEmpty() || category.isEmpty()) {
+                adminView.showMessage("⚠️ Please fill in all fields before adding a destination.");
+                return;
+            }
+
             // Simulate saving to database
             System.out.println("Destination added:");
             System.out.println("Name: " + name);
@@ -33,27 +39,34 @@ public class AdminController {
             System.out.println("Fee: " + fee);
             System.out.println("Category: " + category);
 
-            adminView.showMessage("Destination added successfully!");
+            adminView.showMessage("✅ Destination added successfully!");
         }
     }
 
+    // 📊 View Statistics
     class ViewStatsListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             // Simulate viewing statistics
-            adminView.showMessage("Most searched destinations:\n1. Palawan\n2. Baguio\n3. Siargao");
+            adminView.showMessage("📊 Most searched destinations:\n1. Palawan\n2. Baguio\n3. Siargao");
         }
     }
 
+    // 🚪 Logout
     class LogoutListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            adminView.showMessage("Logged out successfully!");
+            adminView.showMessage("👋 Logged out successfully!");
             adminView.dispose();
+        }
+    }
 
-            LoginView loginView = new LoginView();
-            new LoginController(loginView);
-            loginView.setVisible(true); 
+    // 🧹 Clear Fields
+    class ClearListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            adminView.clearFields();
+            adminView.showMessage("🧹 All fields cleared!");
         }
     }
 }
