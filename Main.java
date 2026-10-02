@@ -5,15 +5,21 @@ import View.HomeView;
 import Controller.HomeController;
 import View.LoginView;
 import Controller.LoginController;
+import View.ReviewView;
+import Controller.ReviewController;
 
 
 //test
 
 public class Main {
     public static void main(String[] args) {
-            HomeView homeView = new HomeView();
-            new HomeController(homeView, new LoginView());
-            homeView.setVisible(true);
+
+
+
+
+            // HomeView homeView = new HomeView();
+            // new HomeController(homeView, new LoginView());
+            // homeView.setVisible(true);
 
             // LoginView loginView = new LoginView();
             // new LoginController(loginView);
