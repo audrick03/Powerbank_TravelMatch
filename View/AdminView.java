@@ -4,6 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
+//jepcomit
+
 public class AdminView extends JFrame {
     private JTextField txtName, txtLocation, txtFee;
     private JComboBox<String> cmbSeason, cmbCategory;
