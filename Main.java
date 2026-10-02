@@ -9,7 +9,7 @@ import Controller.LoginController;
 
 //test
 
-public class main {
+public class Main {
     public static void main(String[] args) {
             HomeView homeView = new HomeView();
             new HomeController(homeView, new LoginView());
