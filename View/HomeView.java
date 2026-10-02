@@ -16,6 +16,11 @@ public class HomeView extends JFrame {
 
     private static final String FONT_NAME = "Arial";
     private static final String DEFAULT_COUNT_TEXT = "0 destinations";
+    
+    // New Color Palette
+    private static final Color PRIMARY = new Color(0x1D9E75);
+    private static final Color ERROR = new Color(0xC0392B);
+    private static final Color BACKGROUND = new Color(240, 245, 250);
 
     // Navigation buttons
     private JButton btnHome;
@@ -220,7 +225,7 @@ public class HomeView extends JFrame {
         JPanel cardsPanel = new JPanel(
                 new GridLayout(2, 3, 20, 20)
         );
-        cardsPanel.setBackground(new Color(240, 245, 250));
+        cardsPanel.setBackground(BACKGROUND);
         cardsPanel.setBorder(new EmptyBorder(5, 5, 15, 5));
 
         cardsPanel.add(createCard(
@@ -274,7 +279,7 @@ public class HomeView extends JFrame {
         JPanel iconPanel = new JPanel(
                 new GridBagLayout()
         );
-        iconPanel.setBackground(new Color(106, 90, 205));
+        iconPanel.setBackground(PRIMARY);
         iconPanel.setPreferredSize(
                 new Dimension(200, 140)
         );
