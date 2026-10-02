@@ -79,7 +79,6 @@ public class LoginController {
     private void openAdminView() {
         AdminView adminView = new AdminView();
         new AdminController(adminView);
-        loginView.closeView();
         adminView.setVisible(true);
     }
 
