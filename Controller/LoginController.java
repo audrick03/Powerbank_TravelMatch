@@ -7,6 +7,7 @@ import View.AdminView;
 import View.LoginView;
 import View.PreferenceView;
 import View.RegisterView;
+import View.HomeView;
 
 import java.util.Optional;
 
@@ -30,6 +31,7 @@ public class LoginController {
         this.userRepository = userRepository;
         loginView.addLoginListener(event -> login());
         loginView.addRegisterListener(event -> openRegisterView());
+        loginView.addBackToHomeListener(event -> openHomeView());
     }
 
     private void login() {
@@ -85,5 +87,12 @@ public class LoginController {
     public void showView() {
         // TODO Auto-generated method stub
         loginView.showView();
+    }
+
+    public void openHomeView() {
+        HomeView homeView = new HomeView();
+        new HomeController(homeView, loginView);
+        loginView.closeView();
+        homeView.setVisible(true);
     }
 }

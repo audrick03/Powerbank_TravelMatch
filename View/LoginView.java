@@ -22,6 +22,7 @@ public class LoginView extends JFrame {
     private final JLabel         errorLabel    = new JLabel(" ");
     private final JButton        loginButton   = new JButton("Log in");
     private final JButton        registerButton = new JButton("Create an account");
+    private final JButton       backToHomeButton = new JButton("Back to Home");
 
     public LoginView() {
         super("TravelMatch - Login");
@@ -51,6 +52,11 @@ public class LoginView extends JFrame {
         registerButton.setContentAreaFilled(false);
         registerButton.setForeground(PRIMARY);
         registerButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        backToHomeButton.setBorderPainted(false);
+        backToHomeButton.setContentAreaFilled(false);
+        backToHomeButton.setForeground(new Color(128, 128, 128));
+        backToHomeButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         showPassword.setFocusPainted(false);
     }
@@ -93,6 +99,10 @@ public class LoginView extends JFrame {
         gc.ipady = 0;
         gc.gridy = row++; gc.insets = new Insets(4, 0, 0, 0);
         content.add(registerButton, gc);
+
+        gc.gridy = row++; gc.insets = new Insets(20, 0, 0, 0);
+        content.add(backToHomeButton, gc);
+
 
         setContentPane(content);
     }
@@ -161,5 +171,9 @@ public class LoginView extends JFrame {
 
     public void closeView() {
         dispose();
+    }
+
+    public void addBackToHomeListener(ActionListener listener) {
+        backToHomeButton.addActionListener(listener);
     }
 }

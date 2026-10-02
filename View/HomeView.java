@@ -106,7 +106,7 @@ public class HomeView extends JFrame {
 
         JLabel logo = new JLabel("🌎 TravelMatch");
         logo.setFont(new Font(FONT_NAME, Font.BOLD, 24));
-        logo.setForeground(new Color(41, 98, 255));
+        logo.setForeground(new Color(0x1D9E75));
 
         JPanel navButtons = new JPanel(
                 new FlowLayout(FlowLayout.RIGHT, 10, 0)
@@ -145,7 +145,7 @@ public class HomeView extends JFrame {
         heroPanel.setLayout(new BoxLayout(
                 heroPanel, BoxLayout.Y_AXIS
         ));
-        heroPanel.setBackground(new Color(0, 188, 212));
+        heroPanel.setBackground(new Color(0x1D9E75));
         heroPanel.setPreferredSize(new Dimension(1400, 250));
         heroPanel.setBorder(new EmptyBorder(35, 20, 25, 20));
 
