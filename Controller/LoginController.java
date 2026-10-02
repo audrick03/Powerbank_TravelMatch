@@ -82,4 +82,9 @@ public class LoginController {
         loginView.closeView();
         adminView.setVisible(true);
     }
+
+    public void showView() {
+        // TODO Auto-generated method stub
+        loginView.showView();
+    }
 }

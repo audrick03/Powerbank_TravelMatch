@@ -95,12 +95,10 @@ public class HomeController {
 
     // Show the login page
     private void showLogin() {
+        LoginController loginController = new LoginController(loginView);
+        loginView.setVisible(true);
+        loginController.showView();
         homeView.setVisible(false);
-
-        if (loginView != null) {
-            loginView.setVisible(true);
-            loginView.toFront();
-        }
     }
 
     // Update category counts on the home page
