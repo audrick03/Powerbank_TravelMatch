@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class HomeController {
 
@@ -84,11 +83,13 @@ public class HomeController {
         showHome();
     }
 
+    // HOME button: back to the home page (hero + categories)
     private void showHome() {
         if (loginView != null) {
             loginView.setVisible(false);
         }
 
+        homeView.showHomePage();
         homeView.setVisible(true);
         homeView.toFront();
     }
@@ -111,42 +112,42 @@ public class HomeController {
         }
     }
 
-    // Get all destinations belonging to a category
-    private List<String> getByCategory(String category) {
-        return DESTINATIONS.entrySet()
-                .stream()
-                .filter(entry ->
-                        entry.getValue().contains(category))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
+    // Get all destinations (name -> categories) belonging to a category
+    private Map<String, List<String>> getByCategory(String category) {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+
+        DESTINATIONS.forEach((name, categories) -> {
+            if (categories.contains(category)) {
+                result.put(name, categories);
+            }
+        });
+
+        return result;
     }
 
     // Search by destination name or category
-    private List<String> searchDestinations(String query) {
+    private Map<String, List<String>> searchDestinations(String query) {
         String q = query.trim().toLowerCase();
+        Map<String, List<String>> result = new LinkedHashMap<>();
 
-        return DESTINATIONS.entrySet()
-                .stream()
-                .filter(entry ->
-                        entry.getKey().toLowerCase().contains(q)
-                        || entry.getValue()
-                                .stream()
-                                .anyMatch(category ->
-                                        category.equalsIgnoreCase(q)))
-                .map(entry ->
-                        entry.getKey() + " ("
-                        + String.join(" / ", entry.getValue())
-                        + ")")
-                .collect(Collectors.toList());
+        DESTINATIONS.forEach((name, categories) -> {
+            boolean nameMatch = name.toLowerCase().contains(q);
+            boolean categoryMatch = categories.stream()
+                    .anyMatch(c -> c.equalsIgnoreCase(q));
+
+            if (nameMatch || categoryMatch) {
+                result.put(name, categories);
+            }
+        });
+
+        return result;
     }
 
     // Handle category card clicks
     private void handleCategoryClick(String category) {
-        List<String> destinations = getByCategory(category);
-
         homeView.showCategoryDestinations(
                 category,
-                destinations
+                getByCategory(category)
         );
     }
 
@@ -164,7 +165,7 @@ public class HomeController {
             return;
         }
 
-        List<String> results = searchDestinations(query);
+        Map<String, List<String>> results = searchDestinations(query);
 
         if (results.isEmpty()) {
             homeView.showSearchResults(query, results);
@@ -177,7 +178,7 @@ public class HomeController {
             return;
         }
 
-        // Display search results in the UI
+        // Display search results as cards in the UI
         homeView.showSearchResults(query, results);
     }
 }
