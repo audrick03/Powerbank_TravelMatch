@@ -76,7 +76,7 @@ public class PreferenceController {
         // Implement the logic to proceed to the next step, e.g., showing recommendations based on the saved preferences.
 
         if (model.getBudget() == null || model.getMonth() == null || model.getGroupType() == null || model.getInterests() == null || model.getInterests().length == 0) {
-            view.showError("Please fill up the form before proceeding.");
+            view.showError("Please fill up and save the form before proceeding.");
             
             return;
         } else {
