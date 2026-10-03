@@ -1,11 +1,20 @@
 package View;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
+import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +22,7 @@ import java.util.function.Consumer;
 
 public class HomeView extends JFrame {
 
-    private static final String FONT_NAME = "Arial";
+    private static final String FONT_NAME = "Segoe UI";
     private static final String EMOJI_FONT = "Segoe UI Emoji";
     private static final String DEFAULT_COUNT_TEXT = "0 destinations";
 
@@ -25,8 +34,13 @@ public class HomeView extends JFrame {
     private static final Color PRIMARY = new Color(0x1D9E75);
     private static final Color PRIMARY_LIGHT = new Color(0x2EC4A0);
     private static final Color BADGE_BG = new Color(0xE3F5EE);
-    private static final Color ERROR = new Color(0xC0392B);
-    private static final Color BACKGROUND = new Color(240, 245, 250);
+    private static final Color BACKGROUND = new Color(0xF1F5F9);
+    private static final Color TEXT_DARK = new Color(0x0F2A43);
+    private static final Color TEXT_MUTED = new Color(0x7A8CA8);
+    private static final Color BORDER_LIGHT = new Color(0xE2E8F0);
+
+    // Image cache (name -> image, null if the file was not found)
+    private final Map<String, BufferedImage> imageCache = new HashMap<>();
 
     // Navigation buttons
     private JButton btnHome;
@@ -61,14 +75,11 @@ public class HomeView extends JFrame {
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Main container
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(BACKGROUND);
 
-        // NAVBAR (always visible)
         JPanel navBar = createNavBar();
 
-        // PAGES (only one visible at a time)
         pageLayout = new CardLayout();
         pageContainer = new JPanel(pageLayout);
         pageContainer.setBackground(BACKGROUND);
@@ -79,15 +90,61 @@ public class HomeView extends JFrame {
         mainPanel.add(pageContainer, BorderLayout.CENTER);
 
         setContentPane(mainPanel);
-
         pageLayout.show(pageContainer, PAGE_HOME);
+    }
+
+    // =========================
+    // IMAGE LOADING
+    // =========================
+
+    // Looks for images/<name>.jpg|jpeg|png on the classpath first,
+    // then in an "images" folder in the project root.
+    private BufferedImage loadImage(String name) {
+        if (imageCache.containsKey(name)) {
+            return imageCache.get(name);
+        }
+
+        BufferedImage result = null;
+        for (String ext : new String[]{".jpg", ".jpeg", ".png"}) {
+            String file = name + ext;
+
+            try (InputStream in = HomeView.class
+                    .getResourceAsStream("/images/" + file)) {
+                if (in != null) {
+                    result = ImageIO.read(in);
+                }
+            } catch (IOException ignored) {
+            }
+
+            if (result == null) {
+                File f = new File("images/" + file);
+                if (f.exists()) {
+                    try {
+                        result = ImageIO.read(f);
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+
+            if (result != null) {
+                break;
+            }
+        }
+
+        imageCache.put(name, result);
+        return result;
+    }
+
+    // File names match the category names:
+    // Beach.jpg, Mountain.jpg, City.jpg, Adventure.jpg, Cultural.jpg
+    private String imageNameFor(String category) {
+        return category;
     }
 
     // =========================
     // PAGES
     // =========================
 
-    // Home page: hero + category cards
     private JScrollPane createHomePage() {
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -106,23 +163,18 @@ public class HomeView extends JFrame {
         return homeScroll;
     }
 
-    // Destination page: grid of destination cards
     private JScrollPane createDiscoverPage() {
         JPanel page = new JPanel(new BorderLayout(0, 15));
         page.setBackground(BACKGROUND);
-        page.setBorder(new EmptyBorder(20, 15, 20, 15));
+        page.setBorder(new EmptyBorder(20, 30, 20, 30));
 
         lblDestinationTitle = new JLabel("Explore Destinations");
         lblDestinationTitle.setFont(new Font(FONT_NAME, Font.BOLD, 28));
-        lblDestinationTitle.setForeground(new Color(35, 35, 35));
-        lblDestinationTitle.setBorder(new EmptyBorder(0, 5, 0, 5));
+        lblDestinationTitle.setForeground(TEXT_DARK);
 
-        // 3 cards per row, as many rows as needed
-        destinationCardsPanel = new JPanel(new GridLayout(0, 3, 20, 20));
+        destinationCardsPanel = new JPanel(new GridLayout(0, 3, 22, 22));
         destinationCardsPanel.setBackground(BACKGROUND);
-        destinationCardsPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
-        // Wrapper keeps cards at their natural height (no stretching)
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.add(destinationCardsPanel, BorderLayout.NORTH);
@@ -170,26 +222,27 @@ public class HomeView extends JFrame {
     private JPanel createNavBar() {
         JPanel navBar = new JPanel(new BorderLayout());
         navBar.setBackground(Color.WHITE);
-        navBar.setBorder(new EmptyBorder(10, 20, 10, 20));
+        navBar.setBorder(new CompoundBorder(
+                new MatteBorder(0, 0, 1, 0, BORDER_LIGHT),
+                new EmptyBorder(10, 25, 10, 25)
+        ));
 
-        JLabel logo = new JLabel("🌎 TravelMatch");
-        logo.setFont(new Font(FONT_NAME, Font.BOLD, 24));
+        JLabel logo = new JLabel(
+                "TravelMatch", new PinIcon(22, 28), SwingConstants.LEFT
+        );
+        logo.setIconTextGap(12);
+        logo.setFont(new Font(FONT_NAME, Font.BOLD, 28));
         logo.setForeground(PRIMARY);
 
         JPanel navButtons = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 10, 0)
+                new FlowLayout(FlowLayout.RIGHT, 12, 0)
         );
         navButtons.setOpaque(false);
 
-        btnHome = new JButton("Home");
-        btnLogin = new JButton("Login");
-        btnGian = new JButton("Gian");
-        btnAudrick = new JButton("Audrick");
-
-        btnHome.setFocusPainted(false);
-        btnLogin.setFocusPainted(false);
-        btnGian.setFocusPainted(false);
-        btnAudrick.setFocusPainted(false);
+        btnHome = createNavButton("Home");
+        btnGian = createNavButton("Gian");
+        btnAudrick = createNavButton("Audrick");
+        btnLogin = createNavButton("Login");
 
         navButtons.add(btnHome);
         navButtons.add(btnGian);
@@ -202,24 +255,32 @@ public class HomeView extends JFrame {
         return navBar;
     }
 
+    private JButton createNavButton(String text) {
+        return new RoundedButton(
+                text,
+                Color.WHITE, new Color(0xF1F5F9),
+                TEXT_DARK, BORDER_LIGHT, 1
+        );
+    }
+
     // =========================
     // HERO SECTION
     // =========================
 
     private JPanel createHeroPanel() {
-        JPanel heroPanel = new JPanel();
-        heroPanel.setLayout(new BoxLayout(
-                heroPanel, BoxLayout.Y_AXIS
-        ));
-        heroPanel.setBackground(PRIMARY);
+        // Photo (images/Hero.jpg) with a green tint on top.
+        // Falls back to solid green if the image is missing.
+        CoverImagePanel heroPanel = new CoverImagePanel(
+                loadImage("Hero"), PRIMARY,
+                new Color(0x1D, 0x9E, 0x75, 205)
+        );
+        heroPanel.setLayout(new BoxLayout(heroPanel, BoxLayout.Y_AXIS));
         heroPanel.setPreferredSize(new Dimension(100, 250));
         heroPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 250));
-        heroPanel.setBorder(new EmptyBorder(35, 20, 25, 20));
+        heroPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        JLabel lblTitle = new JLabel(
-                "Discover Your Perfect Destination"
-        );
-        lblTitle.setFont(new Font(FONT_NAME, Font.BOLD, 36));
+        JLabel lblTitle = new JLabel("Discover Your Perfect Destination");
+        lblTitle.setFont(new Font(FONT_NAME, Font.BOLD, 46));
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -227,22 +288,26 @@ public class HomeView extends JFrame {
                 "Let us recommend the ideal travel spot "
                 + "based on your preferences"
         );
-        lblSubtitle.setFont(new Font(FONT_NAME, Font.PLAIN, 14));
+        lblSubtitle.setFont(new Font(FONT_NAME, Font.PLAIN, 17));
         lblSubtitle.setForeground(Color.WHITE);
         lblSubtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JPanel searchPanel = new JPanel(
-                new FlowLayout(FlowLayout.CENTER, 8, 0)
+                new FlowLayout(FlowLayout.CENTER, 10, 0)
         );
         searchPanel.setOpaque(false);
+        searchPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        searchPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        txtSearch = new JTextField(30);
-        txtSearch.setPreferredSize(new Dimension(330, 35));
-        txtSearch.setFont(new Font(FONT_NAME, Font.PLAIN, 14));
+        txtSearch = new SearchField("Where do you want to go?");
+        txtSearch.setPreferredSize(new Dimension(380, 42));
 
-        btnSearch = new JButton("Search");
-        btnSearch.setPreferredSize(new Dimension(80, 35));
-        btnSearch.setFocusPainted(false);
+        btnSearch = new RoundedButton(
+                "Search",
+                PRIMARY, PRIMARY_LIGHT,
+                Color.WHITE, Color.WHITE, 2
+        );
+        btnSearch.setPreferredSize(new Dimension(100, 42));
 
         // Pressing Enter also triggers search
         txtSearch.addActionListener(e -> btnSearch.doClick());
@@ -250,11 +315,13 @@ public class HomeView extends JFrame {
         searchPanel.add(txtSearch);
         searchPanel.add(btnSearch);
 
+        heroPanel.add(Box.createVerticalGlue());
         heroPanel.add(lblTitle);
         heroPanel.add(Box.createVerticalStrut(10));
         heroPanel.add(lblSubtitle);
-        heroPanel.add(Box.createVerticalStrut(25));
+        heroPanel.add(Box.createVerticalStrut(22));
         heroPanel.add(searchPanel);
+        heroPanel.add(Box.createVerticalGlue());
 
         return heroPanel;
     }
@@ -266,28 +333,26 @@ public class HomeView extends JFrame {
     private JPanel createCategorySection() {
         JPanel section = new JPanel(new BorderLayout());
         section.setBackground(BACKGROUND);
-        section.setBorder(new EmptyBorder(15, 10, 5, 10));
+        section.setBorder(new EmptyBorder(20, 35, 25, 35));
 
         JLabel lblCategories = new JLabel("Popular Categories");
-        lblCategories.setFont(new Font(FONT_NAME, Font.BOLD, 24));
-        lblCategories.setForeground(new Color(35, 35, 35));
-        lblCategories.setBorder(new EmptyBorder(5, 5, 15, 5));
+        lblCategories.setFont(new Font(FONT_NAME, Font.BOLD, 30));
+        lblCategories.setForeground(TEXT_DARK);
+        lblCategories.setBorder(new EmptyBorder(0, 0, 15, 0));
 
-        // Two rows of category cards
-        JPanel cardsPanel = new JPanel(new GridLayout(2, 3, 20, 20));
+        JPanel cardsPanel = new JPanel(new GridLayout(2, 3, 22, 22));
         cardsPanel.setBackground(BACKGROUND);
-        cardsPanel.setBorder(new EmptyBorder(5, 5, 15, 5));
 
-        cardsPanel.add(createCard("🏖", "Beach", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("⛰", "Mountain", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("🏙", "City", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("🎯", "Adventure", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("🏛", "Cultural", DEFAULT_COUNT_TEXT));
+        cardsPanel.add(createCard("Beach", DEFAULT_COUNT_TEXT));
+        cardsPanel.add(createCard("Mountain", DEFAULT_COUNT_TEXT));
+        cardsPanel.add(createCard("City", DEFAULT_COUNT_TEXT));
+        cardsPanel.add(createCard("Adventure", DEFAULT_COUNT_TEXT));
+        cardsPanel.add(createCard("Cultural", DEFAULT_COUNT_TEXT));
 
         // Empty sixth cell for the 2x3 grid
-        cardsPanel.add(new JPanel() {{
-            setOpaque(false);
-        }});
+        JPanel filler = new JPanel();
+        filler.setOpaque(false);
+        cardsPanel.add(filler);
 
         section.add(lblCategories, BorderLayout.NORTH);
         section.add(cardsPanel, BorderLayout.CENTER);
@@ -299,47 +364,59 @@ public class HomeView extends JFrame {
     // CATEGORY CARD
     // =========================
 
-    private JPanel createCard(
-            String icon, String name, String destinations) {
+    private Border cardBorder(boolean hover) {
+        if (hover) {
+            return new LineBorder(PRIMARY, 2);
+        }
+        return new CompoundBorder(
+                new EmptyBorder(1, 1, 1, 1),
+                new LineBorder(BORDER_LIGHT, 1)
+        );
+    }
 
+    private JPanel createCard(String name, String destinations) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Color.WHITE);
-        card.setBorder(new LineBorder(Color.LIGHT_GRAY, 1));
-        card.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        card.setBorder(cardBorder(false));
+        card.setPreferredSize(new Dimension(200, 290));
 
-        // Icon area
-        JPanel iconPanel = new JPanel(new GridBagLayout());
-        iconPanel.setBackground(PRIMARY);
-        iconPanel.setPreferredSize(new Dimension(200, 140));
+        // Photo area
+        BufferedImage photo = loadImage(imageNameFor(name));
+        CoverImagePanel imagePanel =
+                new CoverImagePanel(photo, PRIMARY, null);
+        imagePanel.setLayout(new GridBagLayout());
+        imagePanel.setPreferredSize(new Dimension(200, 215));
 
-        JLabel lblIcon = new JLabel(icon);
-        lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 40));
-        iconPanel.add(lblIcon);
+        // If the photo is missing, show the emoji icon instead
+        if (photo == null) {
+            JLabel lblIcon = new JLabel(iconFor(name));
+            lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 44));
+            imagePanel.add(lblIcon);
+        }
 
         // Category information
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-        infoPanel.setBackground(new Color(250, 250, 250));
-        infoPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        infoPanel.setBackground(Color.WHITE);
+        infoPanel.setBorder(new EmptyBorder(12, 16, 14, 16));
 
         JLabel lblName = new JLabel(name);
-        lblName.setFont(new Font(FONT_NAME, Font.BOLD, 16));
-        lblName.setForeground(new Color(35, 35, 35));
+        lblName.setFont(new Font(FONT_NAME, Font.BOLD, 20));
+        lblName.setForeground(TEXT_DARK);
 
         JLabel lblDest = new JLabel(destinations);
-        lblDest.setFont(new Font(FONT_NAME, Font.PLAIN, 13));
-        lblDest.setForeground(Color.BLACK);
+        lblDest.setFont(new Font(FONT_NAME, Font.PLAIN, 14));
+        lblDest.setForeground(TEXT_MUTED);
 
         countLabels.put(name, lblDest);
 
         infoPanel.add(lblName);
-        infoPanel.add(Box.createVerticalStrut(5));
+        infoPanel.add(Box.createVerticalStrut(4));
         infoPanel.add(lblDest);
 
-        card.add(iconPanel, BorderLayout.CENTER);
+        card.add(imagePanel, BorderLayout.CENTER);
         card.add(infoPanel, BorderLayout.SOUTH);
 
-        // Make entire card and its children clickable
         MouseAdapter clickListener = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -348,12 +425,17 @@ public class HomeView extends JFrame {
 
             @Override
             public void mouseEntered(MouseEvent e) {
-                card.setBorder(new LineBorder(PRIMARY, 2));
+                card.setBorder(cardBorder(true));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                card.setBorder(new LineBorder(Color.LIGHT_GRAY, 1));
+                // Ignore exits into a child of the card
+                Point p = SwingUtilities.convertPoint(
+                        e.getComponent(), e.getPoint(), card);
+                if (!card.contains(p)) {
+                    card.setBorder(cardBorder(false));
+                }
             }
         };
 
@@ -381,39 +463,44 @@ public class HomeView extends JFrame {
     // DESTINATION CARDS
     // =========================
 
-    // One destination card: gradient emoji header, name, category badges
     private JPanel createDestinationCard(
             String name, List<String> categories) {
 
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Color.WHITE);
-        card.setBorder(new LineBorder(new Color(226, 232, 240), 1));
-        card.setPreferredSize(new Dimension(200, 260));
+        card.setBorder(cardBorder(false));
+        card.setPreferredSize(new Dimension(200, 285));
 
-        // Header with a gradient and the first category's icon
-        JPanel header = new JPanel(new GridBagLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setPaint(new GradientPaint(
-                        0, 0, PRIMARY,
-                        getWidth(), getHeight(), PRIMARY_LIGHT
-                ));
-                g2.fillRect(0, 0, getWidth(), getHeight());
-                g2.dispose();
-            }
-        };
-        header.setPreferredSize(new Dimension(200, 120));
+        // Header uses the first category's photo
+        String firstCategory = categories.get(0);
+        BufferedImage photo = loadImage(imageNameFor(firstCategory));
 
-        JLabel lblIcon = new JLabel(iconFor(categories.get(0)));
-        lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 44));
-        header.add(lblIcon);
+        JPanel header;
+        if (photo != null) {
+            header = new CoverImagePanel(photo, PRIMARY, null);
+        } else {
+            header = new JPanel(new GridBagLayout()) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setPaint(new GradientPaint(
+                            0, 0, PRIMARY,
+                            getWidth(), getHeight(), PRIMARY_LIGHT
+                    ));
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+                    g2.dispose();
+                }
+            };
+            JLabel lblIcon = new JLabel(iconFor(firstCategory));
+            lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 44));
+            header.add(lblIcon);
+        }
+        header.setPreferredSize(new Dimension(200, 150));
 
-        // Info section
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setBackground(Color.WHITE);
-        info.setBorder(new EmptyBorder(14, 14, 14, 14));
+        info.setBorder(new EmptyBorder(14, 16, 14, 16));
 
         // HTML lets long names wrap onto extra lines
         JLabel lblName = new JLabel(
@@ -421,8 +508,8 @@ public class HomeView extends JFrame {
                 + name.replace("&", "&amp;")
                 + "</body></html>"
         );
-        lblName.setFont(new Font(FONT_NAME, Font.BOLD, 16));
-        lblName.setForeground(new Color(15, 23, 42));
+        lblName.setFont(new Font(FONT_NAME, Font.BOLD, 17));
+        lblName.setForeground(TEXT_DARK);
         lblName.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel badgeRow = new JPanel(
@@ -441,22 +528,33 @@ public class HomeView extends JFrame {
         card.add(header, BorderLayout.NORTH);
         card.add(info, BorderLayout.CENTER);
 
-        // Hover effect
-        card.addMouseListener(new MouseAdapter() {
+        MouseAdapter hover = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                card.setBorder(new LineBorder(PRIMARY, 2));
+                card.setBorder(cardBorder(true));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                card.setBorder(
-                        new LineBorder(new Color(226, 232, 240), 1)
-                );
+                Point p = SwingUtilities.convertPoint(
+                        e.getComponent(), e.getPoint(), card);
+                if (!card.contains(p)) {
+                    card.setBorder(cardBorder(false));
+                }
             }
-        });
+        };
+        addHoverRecursively(card, hover);
 
         return card;
+    }
+
+    private void addHoverRecursively(Component c, MouseAdapter l) {
+        c.addMouseListener(l);
+        if (c instanceof Container) {
+            for (Component child : ((Container) c).getComponents()) {
+                addHoverRecursively(child, l);
+            }
+        }
     }
 
     // Rounded "pill" label for a category
@@ -583,5 +681,204 @@ public class HomeView extends JFrame {
 
     public String getSearchText() {
         return txtSearch.getText().trim();
+    }
+
+    // =====================================================
+    // CUSTOM COMPONENTS
+    // =====================================================
+
+    // Panel that paints an image scaled to "cover" its area,
+    // with an optional color overlay on top.
+    private static class CoverImagePanel extends JPanel {
+        private final BufferedImage source;
+        private final Color overlay;
+        private BufferedImage cache;
+        private int cacheW, cacheH;
+
+        CoverImagePanel(BufferedImage source, Color base, Color overlay) {
+            this.source = source;
+            this.overlay = overlay;
+            setBackground(base);
+            setOpaque(true);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g); // fills the base color
+            int w = getWidth();
+            int h = getHeight();
+            if (w <= 0 || h <= 0) {
+                return;
+            }
+
+            if (source != null) {
+                if (cache == null || cacheW != w || cacheH != h) {
+                    cache = scaleCover(source, w, h);
+                    cacheW = w;
+                    cacheH = h;
+                }
+                g.drawImage(cache, 0, 0, null);
+            }
+
+            if (overlay != null) {
+                g.setColor(overlay);
+                g.fillRect(0, 0, w, h);
+            }
+        }
+
+        private static BufferedImage scaleCover(
+                BufferedImage img, int w, int h) {
+            double scale = Math.max(
+                    (double) w / img.getWidth(),
+                    (double) h / img.getHeight()
+            );
+            int dw = (int) Math.ceil(img.getWidth() * scale);
+            int dh = (int) Math.ceil(img.getHeight() * scale);
+
+            BufferedImage out =
+                    new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2 = out.createGraphics();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING,
+                    RenderingHints.VALUE_RENDER_QUALITY);
+            g2.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh, null);
+            g2.dispose();
+            return out;
+        }
+    }
+
+    // Rounded button with hover color and optional outline
+    private static class RoundedButton extends JButton {
+        private final Color bg;
+        private final Color bgHover;
+        private final Color outline;
+        private final int outlineWidth;
+
+        RoundedButton(String text, Color bg, Color bgHover,
+                      Color fg, Color outline, int outlineWidth) {
+            super(text);
+            this.bg = bg;
+            this.bgHover = bgHover;
+            this.outline = outline;
+            this.outlineWidth = outlineWidth;
+
+            setForeground(fg);
+            setFont(new Font(FONT_NAME, Font.BOLD, 13));
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setContentAreaFilled(false);
+            setOpaque(false);
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+            setBorder(new EmptyBorder(9, 20, 9, 20));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+
+            g2.setColor(getModel().isRollover() ? bgHover : bg);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+
+            if (outline != null) {
+                float half = outlineWidth / 2f;
+                g2.setColor(outline);
+                g2.setStroke(new BasicStroke(outlineWidth));
+                g2.draw(new RoundRectangle2D.Float(
+                        half, half,
+                        getWidth() - outlineWidth,
+                        getHeight() - outlineWidth,
+                        10, 10));
+            }
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    // White rounded text field with placeholder text
+    private static class SearchField extends JTextField {
+        private final String placeholder;
+
+        SearchField(String placeholder) {
+            this.placeholder = placeholder;
+            setOpaque(false);
+            setBorder(new EmptyBorder(0, 16, 0, 16));
+            setFont(new Font(FONT_NAME, Font.PLAIN, 15));
+            setForeground(TEXT_DARK);
+            setCaretColor(TEXT_DARK);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(Color.WHITE);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+            g2.dispose();
+
+            super.paintComponent(g);
+
+            if (getText().isEmpty()) {
+                Graphics2D g3 = (Graphics2D) g.create();
+                g3.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g3.setColor(new Color(0x94A3B8));
+                g3.setFont(getFont());
+                FontMetrics fm = g3.getFontMetrics();
+                int x = getInsets().left;
+                int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                g3.drawString(placeholder, x, y);
+                g3.dispose();
+            }
+        }
+    }
+
+    // Location-pin logo icon drawn with Java2D (no emoji font needed)
+    private static class PinIcon implements Icon {
+        private final int w;
+        private final int h;
+
+        PinIcon(int w, int h) {
+            this.w = w;
+            this.h = h;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.translate(x, y);
+
+            Area pin = new Area(new Ellipse2D.Double(0, 0, w, w));
+
+            Path2D tip = new Path2D.Double();
+            tip.moveTo(w * 0.10, w * 0.70);
+            tip.lineTo(w * 0.90, w * 0.70);
+            tip.lineTo(w / 2.0, h);
+            tip.closePath();
+            pin.add(new Area(tip));
+
+            double d = w * 0.40;
+            pin.subtract(new Area(new Ellipse2D.Double(
+                    (w - d) / 2, (w - d) / 2, d, d)));
+
+            g2.setColor(PRIMARY);
+            g2.fill(pin);
+            g2.dispose();
+        }
+
+        @Override
+        public int getIconWidth() {
+            return w;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return h;
+        }
     }
 }
