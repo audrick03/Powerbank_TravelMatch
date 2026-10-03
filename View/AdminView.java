@@ -4,8 +4,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
-//jepcomit
-
 public class AdminView extends JFrame {
     private JTextField txtName, txtLocation, txtFee;
     private JComboBox<String> cmbSeason, cmbCategory;
@@ -17,72 +15,64 @@ public class AdminView extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Gradient background
-        JPanel gradientPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(0, 0, new Color(230, 255, 230),
-                                                     0, getHeight(), new Color(180, 255, 200));
-                g2d.setPaint(gp);
-                g2d.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        gradientPanel.setLayout(new GridBagLayout());
+        //Plain white background
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridBagLayout());
+        mainPanel.setBackground(Color.WHITE);
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Title
+        //Title
         JLabel lblTitle = new JLabel("TravelMatch Admin Dashboard", SwingConstants.CENTER);
         lblTitle.setFont(new Font("SansSerif", Font.BOLD, 24));
         lblTitle.setForeground(new Color(0, 102, 51));
         lblTitle.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, new Color(0, 128, 64)));
 
-        // Input fields
+        //Input fields
         txtName = new JTextField();
         txtLocation = new JTextField();
         txtFee = new JTextField();
 
-        // Combo boxes for options
+        //Combo boxes
         cmbSeason = new JComboBox<>(new String[]{"Summer", "Rainy", "Winter", "Spring"});
         cmbCategory = new JComboBox<>(new String[]{"Beach", "Mountain", "City", "Cultural", "Adventure"});
 
-        // Buttons
+        //Buttons
         btnAdd = createStyledButton("Add Destination");
         btnViewStats = createStyledButton("View Statistics");
         btnLogout = createStyledButton("Logout");
         btnClear = createStyledButton("Clear Fields");
 
-        // Validation for fee
+        //Validation for fee
         addNumberValidation(txtFee);
 
-        // Layout
+        //Layout
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        gradientPanel.add(lblTitle, gbc);
+        mainPanel.add(lblTitle, gbc);
 
         gbc.gridwidth = 1;
-        addField(gradientPanel, gbc, "🌐 Destination Name:", txtName, 1);
-        addField(gradientPanel, gbc, "🔑 Location:", txtLocation, 2);
-        addField(gradientPanel, gbc, "☀️ Best Season:", cmbSeason, 3);
-        addField(gradientPanel, gbc, "💰 Fee:", txtFee, 4);
-        addField(gradientPanel, gbc, "🏖️ Category:", cmbCategory, 5);
+        addField(mainPanel, gbc, "🌐 Destination Name:", txtName, 1);
+        addField(mainPanel, gbc, "🔑 Location:", txtLocation, 2);
+        addField(mainPanel, gbc, "☀️ Best Season:", cmbSeason, 3);
+        addField(mainPanel, gbc, "💰 Fee:", txtFee, 4);
+        addField(mainPanel, gbc, "🏖️ Category:", cmbCategory, 5);
 
         gbc.gridx = 0; gbc.gridy = 6;
-        gradientPanel.add(btnAdd, gbc);
+        mainPanel.add(btnAdd, gbc);
         gbc.gridx = 1;
-        gradientPanel.add(btnViewStats, gbc);
+        mainPanel.add(btnViewStats, gbc);
 
         gbc.gridx = 0; gbc.gridy = 7;
-        gradientPanel.add(btnClear, gbc);
+        mainPanel.add(btnClear, gbc);
         gbc.gridx = 1;
-        gradientPanel.add(btnLogout, gbc);
+        mainPanel.add(btnLogout, gbc);
 
-        add(gradientPanel);
+        add(mainPanel);
     }
 
-    //  Helper to style buttons
+    //Helper to style buttons
     private JButton createStyledButton(String text) {
         JButton button = new JButton(text);
         button.setBackground(new Color(0, 153, 102));
@@ -99,7 +89,7 @@ public class AdminView extends JFrame {
         return button;
     }
 
-    //  Helper to add label + field
+    //Helper to add label + field
     private void addField(JPanel panel, GridBagConstraints gbc, String label, JComponent field, int row) {
         gbc.gridx = 0; gbc.gridy = row;
         JLabel lbl = new JLabel(label);
@@ -111,7 +101,7 @@ public class AdminView extends JFrame {
         panel.add(field, gbc);
     }
 
-    //  Validation: numbers only
+    //Validation: numbers only
     private void addNumberValidation(JTextField field) {
         field.addKeyListener(new KeyAdapter() {
             public void keyTyped(KeyEvent e) {
@@ -133,14 +123,14 @@ public class AdminView extends JFrame {
         cmbCategory.setSelectedIndex(0);
     }
 
-    // Getters
+    // 🧩 Getters
     public String getDestinationName() { return txtName.getText(); }
     public String getDestinationLocation() { return txtLocation.getText(); }
     public String getBestSeason() { return (String) cmbSeason.getSelectedItem(); }
     public String getFee() { return txtFee.getText(); }
     public String getCategory() { return (String) cmbCategory.getSelectedItem(); }
 
-    // Listeners
+    // 🧩 Listeners
     public void addDestinationListener(ActionListener listener) { btnAdd.addActionListener(listener); }
     public void viewStatsListener(ActionListener listener) { btnViewStats.addActionListener(listener); }
     public void logoutListener(ActionListener listener) { btnLogout.addActionListener(listener); }

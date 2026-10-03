@@ -7,6 +7,7 @@ import java.awt.event.ActionListener;
 public class AdminController {
     private AdminView adminView;
 
+    // commit
     public AdminController(AdminView adminView) {
         this.adminView = adminView;
         this.adminView.addDestinationListener(new AddDestinationListener());
