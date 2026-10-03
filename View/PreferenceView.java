@@ -66,7 +66,7 @@ public class PreferenceView extends JFrame {
 
         recommendButton = new JButton("Find Destinations");
         resetButton = new JButton("Reset");
-        forwardButton = new JButton("Proceed to Recommendations");
+        forwardButton = new JButton("Back to Home");
         messageLabel = new JLabel(" ");
 
         initComponents();

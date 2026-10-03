@@ -2,6 +2,10 @@ package Controller;
 
 import View.HomeView;
 import View.LoginView;
+import View.PreferenceView;
+
+import Controller.PreferenceController;
+import Model.PreferenceModel;
 
 import javax.swing.JOptionPane;
 import java.util.Arrays;
@@ -74,6 +78,7 @@ public class HomeController {
         homeView.addLoginListener(e -> showLogin());
         homeView.addHomeListener(e -> showHome());
         homeView.addSearchListener(e -> handleSearch());
+        homeView.addPreferenceListener(e -> showPreferences());
 
         // Category card click listener
         homeView.addCategoryListener(this::handleCategoryClick);
@@ -100,6 +105,20 @@ public class HomeController {
         LoginController loginController = new LoginController(loginView);
         loginView.setVisible(true);
         loginController.showView();
+        homeView.setVisible(false);
+    }
+
+    private void showPreferences() {
+        PreferenceView preferenceView = new PreferenceView();
+        PreferenceController preferenceController = new PreferenceController(preferenceView, null);
+
+        preferenceController.showView();
+        preferenceView.setVisible(true);
+
+        PreferenceModel preferenceModel = new PreferenceModel();
+        preferenceController = new PreferenceController(preferenceView, preferenceModel);
+
+
         homeView.setVisible(false);
     }
 

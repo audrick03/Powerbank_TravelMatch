@@ -45,8 +45,8 @@ public class HomeView extends JFrame {
     // Navigation buttons
     private JButton btnHome;
     private JButton btnLogin;
-    private JButton btnGian;
-    private JButton btnAudrick;
+    private JButton btnRecommendation;
+    private JButton btnPreference;
 
     // Search components
     private JButton btnSearch;
@@ -240,13 +240,13 @@ public class HomeView extends JFrame {
         navButtons.setOpaque(false);
 
         btnHome = createNavButton("Home");
-        btnGian = createNavButton("Gian");
-        btnAudrick = createNavButton("Audrick");
+        btnRecommendation = createNavButton("Recommendations");
+        btnPreference = createNavButton("Preferences");
         btnLogin = createNavButton("Login");
 
         navButtons.add(btnHome);
-        navButtons.add(btnGian);
-        navButtons.add(btnAudrick);
+        navButtons.add(btnRecommendation);
+        navButtons.add(btnPreference);
         navButtons.add(btnLogin);
 
         navBar.add(logo, BorderLayout.WEST);
@@ -646,6 +646,14 @@ public class HomeView extends JFrame {
     // =========================
     // CONTROLLER LISTENERS
     // =========================
+
+    public void addPreferenceListener(ActionListener listener) {
+        btnPreference.addActionListener(listener);
+    }
+
+    public void addRecommendationListener(ActionListener listener) {
+        btnRecommendation.addActionListener(listener);
+    }
 
     public void addHomeListener(ActionListener listener) {
         btnHome.addActionListener(listener);
