@@ -63,7 +63,7 @@ public class RecommendationView extends JFrame {
     private final JPanel activityPanel = new JPanel(new BorderLayout(18, 0));
     private final JButton btnDetails = new ActionButton("View Details", true);
     private final JButton btnBackToCategories = new ActionButton("←  Back to Categories", false);
-    private Destination shownDestination;
+    private DestinationModel shownDestination;
 
     private ScrollPanel content;
     private JScrollPane scroll;
@@ -72,8 +72,8 @@ public class RecommendationView extends JFrame {
 
     private Consumer<String> regionListener = r -> {};
     private Consumer<String> categoryListener = c -> {};
-    private Consumer<Destination> destinationListener = d -> {};
-    private Consumer<Destination> detailsListener = d -> {};
+    private Consumer<DestinationModel> destinationListener = d -> {};
+    private Consumer<DestinationModel> detailsListener = d -> {};
 
     public RecommendationView() {
         setTitle("TravelMatch - Recommendations");
@@ -138,8 +138,8 @@ public class RecommendationView extends JFrame {
 
     public void addRegionListener(Consumer<String> l)          { regionListener = l; }
     public void addCategoryListener(Consumer<String> l)        { categoryListener = l; }
-    public void addDestinationListener(Consumer<Destination> l){ destinationListener = l; }
-    public void addDetailsListener(Consumer<Destination> l)    { detailsListener = l; }
+    public void addDestinationListener(Consumer<DestinationModel> l){ destinationListener = l; }
+    public void addDetailsListener(Consumer<DestinationModel> l)    { detailsListener = l; }
 
     public void setSelectedRegion(String region) {
         for (Map.Entry<String, SelectableCard> e : regionCards.entrySet()) {
@@ -157,7 +157,7 @@ public class RecommendationView extends JFrame {
 
     /** Destination cards for one region + category. 'selected' may be null. */
     public void showDestinations(String region, String category,
-                                 List<Destination> list, Destination selected) {
+                                 List<DestinationModel> list, DestinationModel selected) {
         String catLabel = DestinationRepository.label(category);
         lblDestIcon.setText(iconFor(category));
         lblDestTitle.setText(region + " — " + catLabel + " Destinations");
@@ -170,7 +170,7 @@ public class RecommendationView extends JFrame {
             destGrid.add(label("No destinations found for this region and category yet.", 15, false, TEXT_MUTED));
         } else {
             destGrid.setLayout(new GridLayout(0, 5, 14, 14));
-            for (Destination d : list) {
+            for (DestinationModel d : list) {
                 destGrid.add(createDestinationCard(d, category, d == selected));
             }
             // keep card width constant when a row is not full
@@ -185,7 +185,7 @@ public class RecommendationView extends JFrame {
     }
 
     /** The green "Recommended Activities" panel under the destination cards. */
-    public void showActivities(Destination d, String category) {
+    public void showActivities(DestinationModel d, String category) {
         shownDestination = d;
         String cat = category != null ? category : d.getCategories().get(0);
 
@@ -268,7 +268,7 @@ public class RecommendationView extends JFrame {
     }
 
     /** Full details of one destination (View Details button). */
-    public void showDetails(Destination d, String category) {
+    public void showDetails(DestinationModel d, String category) {
         String cat = category != null ? category : d.getCategories().get(0);
         StringBuilder sb = new StringBuilder("<html><body style='font-family:" + FONT
                 + ";width:440px'>");
@@ -475,7 +475,7 @@ public class RecommendationView extends JFrame {
         return card;
     }
 
-    private SelectableCard createDestinationCard(Destination d, String category, boolean selected) {
+    private SelectableCard createDestinationCard(DestinationModel d, String category, boolean selected) {
         SelectableCard card = new SelectableCard(new BorderLayout(0, 8), 6);
 
         String firstCat = d.getCategories().get(0);
@@ -514,7 +514,7 @@ public class RecommendationView extends JFrame {
         return card;
     }
 
-    private JPanel createActivityCard(Destination d, String category, String activity) {
+    private JPanel createActivityCard(DestinationModel d, String category, String activity) {
         JPanel card = new JPanel(new BorderLayout(0, 6));
         card.setBackground(Color.WHITE);
         card.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1), new EmptyBorder(4, 4, 8, 4)));
@@ -741,7 +741,7 @@ public class RecommendationView extends JFrame {
     // IMAGES  (images/<name>.jpg|jpeg|png on classpath or project root)
     // =========================================================
 
-    private BufferedImage loadDestinationImage(Destination d, String category) {
+    private BufferedImage loadDestinationImage(DestinationModel d, String category) {
         BufferedImage own = loadImage(clean(d.getName()));
         return own != null ? own : loadImage(category);
     }

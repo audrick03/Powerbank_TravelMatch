@@ -121,7 +121,7 @@ public class HomeController {
     }
 
     private void showCategoryList() {
-        List<Destination> list =
+        List<DestinationModel> list =
                 repository.getByRegionAndCategory(selectedRegion, selectedCategory);
 
         explore.showDestinations(
@@ -139,7 +139,7 @@ public class HomeController {
     }
 
     // DESTINATION -> activities, places, details
-    private void handleDestinationClick(Destination destination) {
+    private void handleDestinationClick(DestinationModel destination) {
         level = Level.DETAIL;
         explore.showDetail(destination, selectedCategory);
         homeView.showExplorePage();
@@ -175,7 +175,7 @@ public class HomeController {
     }
 
     private void showSearchResults(String query) {
-        List<Destination> results = repository.search(query);
+        List<DestinationModel> results = repository.search(query);
 
         selectedCategory = null;
         fromSearch = true;

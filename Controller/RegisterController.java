@@ -16,16 +16,16 @@ public class RegisterController {
 
     private final RegisterView view;
     private final AuthenticationService authenticationService;
-    private final Consumer<User> onRegistered;
+    private final Consumer<UserModel> onRegistered;
     private final Runnable onBack;
 
     public RegisterController(RegisterView view, UserRepository userRepository,
-                              Consumer<User> onRegistered, Runnable onBack) {
+                              Consumer<UserModel> onRegistered, Runnable onBack) {
         this(view, new AuthenticationService(userRepository), onRegistered, onBack);
     }
 
     public RegisterController(RegisterView view, AuthenticationService authenticationService,
-                              Consumer<User> onRegistered, Runnable onBack) {
+                              Consumer<UserModel> onRegistered, Runnable onBack) {
         if (view == null || authenticationService == null || onRegistered == null || onBack == null) {
             throw new IllegalArgumentException("Registration dependencies are required");
         }
@@ -68,7 +68,7 @@ public class RegisterController {
             return;
         }
 
-        Optional<User> registeredUser = authenticationService.register(username, password);
+        Optional<UserModel> registeredUser = authenticationService.register(username, password);
         if (!registeredUser.isPresent()) {
             view.setMessage("That username is already in use.");
             return;

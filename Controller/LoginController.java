@@ -33,7 +33,7 @@ public class LoginController {
     }
 
     private void login() {
-        Optional<User> authenticatedUser =
+        Optional<UserModel> authenticatedUser =
             authenticationService.authenticate(loginView.getUsername(), loginView.getPassword());
 
         if (!authenticatedUser.isPresent()) {
@@ -41,7 +41,7 @@ public class LoginController {
             return;
         }
 
-        User user = authenticatedUser.get();
+        UserModel user = authenticatedUser.get();
         loginView.clearError();
         if (user.isAdmin()) {
             openAdminView();

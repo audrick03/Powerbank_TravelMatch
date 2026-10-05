@@ -61,7 +61,7 @@ public class DestinationRepository {
         return INSTANCE;
     }
 
-    private final List<Destination> destinations = new ArrayList<>();
+    private final List<DestinationModel> destinations = new ArrayList<>();
 
     private DestinationRepository() {
         seedLuzon();
@@ -73,13 +73,13 @@ public class DestinationRepository {
     // QUERIES
     // =====================================================
 
-    public List<Destination> getAll() {
+    public List<DestinationModel> getAll() {
         return Collections.unmodifiableList(destinations);
     }
 
-    public List<Destination> getByRegion(String region) {
-        List<Destination> result = new ArrayList<>();
-        for (Destination d : destinations) {
+    public List<DestinationModel> getByRegion(String region) {
+        List<DestinationModel> result = new ArrayList<>();
+        for (DestinationModel d : destinations) {
             if (d.getRegion().equalsIgnoreCase(region)) {
                 result.add(d);
             }
@@ -88,9 +88,9 @@ public class DestinationRepository {
     }
 
     /** Destinations in ONE region AND ONE category (the main browsing filter). */
-    public List<Destination> getByRegionAndCategory(String region, String category) {
-        List<Destination> result = new ArrayList<>();
-        for (Destination d : getByRegion(region)) {
+    public List<DestinationModel> getByRegionAndCategory(String region, String category) {
+        List<DestinationModel> result = new ArrayList<>();
+        for (DestinationModel d : getByRegion(region)) {
             if (d.hasCategory(category)) {
                 result.add(d);
             }
@@ -98,9 +98,9 @@ public class DestinationRepository {
         return result;
     }
 
-    public List<Destination> getByCategory(String category) {
-        List<Destination> result = new ArrayList<>();
-        for (Destination d : destinations) {
+    public List<DestinationModel> getByCategory(String category) {
+        List<DestinationModel> result = new ArrayList<>();
+        for (DestinationModel d : destinations) {
             if (d.hasCategory(category)) {
                 result.add(d);
             }
@@ -109,10 +109,10 @@ public class DestinationRepository {
     }
 
     /** Search by name, province, region or category (case-insensitive). */
-    public List<Destination> search(String query) {
+    public List<DestinationModel> search(String query) {
         String q = query.trim().toLowerCase();
-        List<Destination> result = new ArrayList<>();
-        for (Destination d : destinations) {
+        List<DestinationModel> result = new ArrayList<>();
+        for (DestinationModel d : destinations) {
             boolean match = d.getName().toLowerCase().contains(q)
                     || d.getProvince().toLowerCase().contains(q)
                     || d.getRegion().equalsIgnoreCase(q)
@@ -125,8 +125,8 @@ public class DestinationRepository {
         return result;
     }
 
-    public Destination findByName(String name) {
-        for (Destination d : destinations) {
+    public DestinationModel findByName(String name) {
+        for (DestinationModel d : destinations) {
             if (d.getName().equalsIgnoreCase(name)) {
                 return d;
             }
@@ -148,7 +148,7 @@ public class DestinationRepository {
     // =====================================================
 
     /** @return false if a destination with the same name already exists. */
-    public boolean add(Destination destination) {
+    public boolean add(DestinationModel destination) {
         if (findByName(destination.getName()) != null) {
             return false;
         }
@@ -157,7 +157,7 @@ public class DestinationRepository {
     }
 
     public boolean remove(String name) {
-        Destination d = findByName(name);
+        DestinationModel d = findByName(name);
         return d != null && destinations.remove(d);
     }
 
@@ -451,7 +451,7 @@ public class DestinationRepository {
                 "Swimming;River sightseeing;Snorkeling;Photography;Nature exploration",
                 "Deep blue spring|The river's main pool;Viewing platform|Photo spot over the water;Riverside trail|Short walk by the river");
 
-        Destination davao = add(MINDANAO, "Davao City", "Davao del Sur", "City,Cultural",
+        DestinationModel davao = add(MINDANAO, "Davao City", "Davao del Sur", "City,Cultural",
                 "Mindanao's biggest city, mixing markets, food and local culture.",
                 4.6, "Year-round", "3 days", "Easy", "₱4,000–8,000 per person",
                 "Cultural tours;Local market exploration;Food trips;Heritage sightseeing;Local crafts shopping;City sightseeing;Food exploration;Shopping;Night market visits;Cultural experiences",
@@ -488,11 +488,11 @@ public class DestinationRepository {
     }
 
     // ---------- helper used by the seed methods ----------
-    private Destination add(String region, String name, String province, String categories,
+    private DestinationModel add(String region, String name, String province, String categories,
                             String description, double score, String bestTime, String duration,
                             String difficulty, String budget, String activities, String places) {
 
-        Destination d = new Destination(name, province, region,
+        DestinationModel d = new DestinationModel(name, province, region,
                 Arrays.asList(categories.split(",")), description);
         d.setScore(score);
         d.setTravelInfo(bestTime, duration, difficulty, budget);

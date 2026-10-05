@@ -18,7 +18,7 @@ public class RecommendationController {
 
     private String selectedRegion = DestinationRepository.REGIONS.get(0);
     private String selectedCategory = DestinationRepository.CATEGORIES.get(0);
-    private Destination selectedDestination;
+    private DestinationModel selectedDestination;
 
     public RecommendationController(RecommendationView view) {
         this.view = view;
@@ -51,7 +51,7 @@ public class RecommendationController {
     }
 
     // DESTINATION: show its own recommended activities
-    private void handleDestinationClick(Destination destination) {
+    private void handleDestinationClick(DestinationModel destination) {
         selectedDestination = destination;
         refresh();
     }
@@ -64,7 +64,7 @@ public class RecommendationController {
 
     // Push the current selections to the view
     private void refresh() {
-        List<Destination> list =
+        List<DestinationModel> list =
                 repository.getByRegionAndCategory(selectedRegion, selectedCategory);
 
         view.setSelectedRegion(selectedRegion);

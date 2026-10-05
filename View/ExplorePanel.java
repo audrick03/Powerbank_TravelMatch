@@ -73,7 +73,7 @@ public class ExplorePanel extends JPanel {
     private final Set<String> trip = new LinkedHashSet<>();
 
     private Consumer<String> categoryListener = c -> {};
-    private Consumer<Destination> destinationListener = d -> {};
+    private Consumer<DestinationModel> destinationListener = d -> {};
 
     public ExplorePanel() {
         setLayout(new BorderLayout());
@@ -106,7 +106,7 @@ public class ExplorePanel extends JPanel {
 
     public void addBackListener(ActionListener l)               { btnBack.addActionListener(l); }
     public void addCategoryListener(Consumer<String> l)         { categoryListener = l; }
-    public void addDestinationListener(Consumer<Destination> l) { destinationListener = l; }
+    public void addDestinationListener(Consumer<DestinationModel> l) { destinationListener = l; }
     public Set<String> getTripItems()                           { return trip; }
 
     /** REGION -> CATEGORY: five category cards for the chosen region. */
@@ -129,7 +129,7 @@ public class ExplorePanel extends JPanel {
      * category may be null (search results); then activities of all categories are shown.
      */
     public void showDestinations(String title, String subtitle, String crumb,
-                                 List<Destination> list, String category) {
+                                 List<DestinationModel> list, String category) {
         lblListTitle.setText(title);
         lblListSub.setText(subtitle);
         lblCrumb.setText(crumb);
@@ -141,7 +141,7 @@ public class ExplorePanel extends JPanel {
             empty.setForeground(TEXT_MUTED);
             listGrid.add(empty);
         }
-        for (Destination d : list) {
+        for (DestinationModel d : list) {
             listGrid.add(createDestinationCard(d, category));
         }
         refresh(listGrid);
@@ -150,7 +150,7 @@ public class ExplorePanel extends JPanel {
     }
 
     /** DESTINATION -> activities, places, travel info and "why recommended". */
-    public void showDetail(Destination d, String category) {
+    public void showDetail(DestinationModel d, String category) {
         String cat = category != null ? category : d.getCategories().get(0);
 
         lblCrumb.setText(d.getRegion() + "  ›  " + DestinationRepository.label(cat) + "  ›  " + d.getName());
@@ -341,7 +341,7 @@ public class ExplorePanel extends JPanel {
         return card;
     }
 
-    private JPanel createDestinationCard(Destination d, String category) {
+    private JPanel createDestinationCard(DestinationModel d, String category) {
         JPanel card = baseCard();
         card.setPreferredSize(new Dimension(200, 430));
 
@@ -385,7 +385,7 @@ public class ExplorePanel extends JPanel {
         return card;
     }
 
-    private JPanel createActivityCard(Destination d, String activity) {
+    private JPanel createActivityCard(DestinationModel d, String activity) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
@@ -432,7 +432,7 @@ public class ExplorePanel extends JPanel {
         return card;
     }
 
-    private JPanel createHero(Destination d, String category) {
+    private JPanel createHero(DestinationModel d, String category) {
         CoverPanel hero = new CoverPanel(loadDestinationImage(d, category), iconFor(category), new Color(0, 0, 0, 90));
         hero.setLayout(new BorderLayout());
         hero.setPreferredSize(new Dimension(100, 230));
@@ -453,7 +453,7 @@ public class ExplorePanel extends JPanel {
         return hero;
     }
 
-    private JPanel createWhyBox(Destination d, String category) {
+    private JPanel createWhyBox(DestinationModel d, String category) {
         List<String> acts = d.getActivities(category);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < Math.min(4, acts.size()); i++) {
@@ -638,7 +638,7 @@ public class ExplorePanel extends JPanel {
 
     // Destination photo = images/<Destination name>.jpg (symbols removed),
     // otherwise falls back to the category photo, then to a gradient.
-    private BufferedImage loadDestinationImage(Destination d, String category) {
+    private BufferedImage loadDestinationImage(DestinationModel d, String category) {
         BufferedImage own = loadImage(d.getName().replaceAll("[^A-Za-z0-9 _-]", "").trim());
         return own != null ? own : loadImage(category);
     }

@@ -17,11 +17,11 @@ public class AuthenticationService {
         this.userRepository = userRepository;
     }
 
-    public Optional<User> authenticate(String username, String password) {
+    public Optional<UserModel> authenticate(String username, String password) {
         return userRepository.authenticate(username, password);
     }
 
-    public Optional<User> register(String username, String password) {
+    public Optional<UserModel> register(String username, String password) {
         return userRepository.register(username, password);
     }
 }

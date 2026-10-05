@@ -1,7 +1,7 @@
 package repository;
 
 import model.*;
-import model.User.Role;
+import model.UserModel.Role;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -43,7 +43,7 @@ public class UserRepository {
         initializeDatabase();
     }
 
-    public Optional<User> authenticate(String username, String password) {
+    public Optional<UserModel> authenticate(String username, String password) {
         if (username == null || username.trim().isEmpty() || password == null) {
             return Optional.empty();
         }
@@ -67,7 +67,7 @@ public class UserRepository {
                     return Optional.empty();
                 }
 
-                return Optional.of(new User(
+                return Optional.of(new UserModel(
                         result.getString("username"),
                         Role.valueOf(result.getString("role"))));
             }
@@ -76,13 +76,13 @@ public class UserRepository {
         }
     }
 
-    public Optional<User> register(String username, String password) {
+    public Optional<UserModel> register(String username, String password) {
         if (password == null || password.length() < MINIMUM_PASSWORD_LENGTH) {
             throw new IllegalArgumentException(
                     "Password must be at least " + MINIMUM_PASSWORD_LENGTH + " characters");
         }
 
-        User user = new User(username, Role.NORMAL_USER);
+        UserModel user = new UserModel(username, Role.NORMAL_USER);
         String usernameKey = normalizeUsername(user.getUsername());
         byte[] salt = new byte[SALT_LENGTH_BYTES];
         SECURE_RANDOM.nextBytes(salt);

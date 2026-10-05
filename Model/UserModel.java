@@ -1,6 +1,6 @@
 package model;
 
-public class User {
+public class UserModel {
 
     public enum Role {
         NORMAL_USER,
@@ -10,7 +10,7 @@ public class User {
     private final String username;
     private final Role role;
 
-    public User(String username, Role role) {
+    public UserModel(String username, Role role) {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username cannot be blank");
         }
