@@ -1,6 +1,6 @@
-package Repository;
+package repository;
 
-import Model.Destination;
+import model.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;

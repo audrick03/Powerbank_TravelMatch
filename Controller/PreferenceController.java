@@ -1,26 +1,22 @@
-package Controller;
+package controller;
 
-import Model.PreferenceModel;
-import View.PreferenceView;
-import View.HomeView;
-import Controller.HomeController;
-import Model.PreferenceModel;
-import View.LoginView;
+import model.*;
+import view.*;
 
 import java.util.Arrays;
-
-// test
 
 public class PreferenceController {
 
     private final PreferenceView view;
     private final PreferenceModel model;
-    private final LoginView loginView;
 
     public PreferenceController(PreferenceView view, PreferenceModel model) {
+        if (view == null || model == null) {
+            throw new IllegalArgumentException("Preference view and model are required");
+        }
+
         this.view = view;
         this.model = model;
-        this.loginView = new LoginView();
 
         initializeListeners();
     }
@@ -47,8 +43,8 @@ public class PreferenceController {
         } else if (budget.equals("--- Select ---") || month.equals("--- Select ---") || groupType.equals("--- Select ---")) {
             view.showError("Please fill in all fields.");
             return;
-        } else {
-        // Save preferences
+        }
+
         model.setBudget(budget);
         model.setMonth(month);
         model.setGroupType(groupType);
@@ -60,10 +56,7 @@ public class PreferenceController {
                 "Month: " + model.getMonth() + "\n" +
                 "Group Type: " + model.getGroupType() + "\n" +
                 "Interests: " + Arrays.toString(model.getInterests());
-
         view.showMessage(summary);
-
-        }
     }
 
     private void handleReset() {
@@ -80,18 +73,18 @@ public class PreferenceController {
 
     private void backToHome() {
         HomeView homeView = new HomeView();
-        HomeController homeController = new HomeController(homeView, loginView);
+        HomeController homeController = new HomeController(homeView, null);
         homeController.start();
-        view.setVisible(false);
+        view.dispose();
     }
 
     private void handleForward() {
-        // Implement the logic to proceed to the next step, e.g., showing recommendations based on the saved preferences.
-        
-
-        if (model.getBudget() == null || model.getMonth() == null || model.getGroupType() == null || model.getInterests() == null || model.getInterests().length == 0) {
+        if (model.getBudget() == null
+                || model.getMonth() == null
+                || model.getGroupType() == null
+                || model.getInterests() == null
+                || model.getInterests().length == 0) {
             view.showError("Please fill up and save the form before proceeding.");
-            view.clearMessage();
             return;
         } else {
             String summary =

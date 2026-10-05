@@ -1,8 +1,9 @@
-package Controller;
+package controller;
 
-import Model.User;
-import Repository.UserRepository;
-import View.RegisterView;
+import model.*;
+import repository.*;
+import service.*;
+import view.*;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -14,18 +15,23 @@ public class RegisterController {
     private static final int MINIMUM_PASSWORD_LENGTH = 8;
 
     private final RegisterView view;
-    private final UserRepository userRepository;
+    private final AuthenticationService authenticationService;
     private final Consumer<User> onRegistered;
     private final Runnable onBack;
 
     public RegisterController(RegisterView view, UserRepository userRepository,
                               Consumer<User> onRegistered, Runnable onBack) {
-        if (view == null || userRepository == null || onRegistered == null || onBack == null) {
+        this(view, new AuthenticationService(userRepository), onRegistered, onBack);
+    }
+
+    public RegisterController(RegisterView view, AuthenticationService authenticationService,
+                              Consumer<User> onRegistered, Runnable onBack) {
+        if (view == null || authenticationService == null || onRegistered == null || onBack == null) {
             throw new IllegalArgumentException("Registration dependencies are required");
         }
 
         this.view = view;
-        this.userRepository = userRepository;
+        this.authenticationService = authenticationService;
         this.onRegistered = onRegistered;
         this.onBack = onBack;
 
@@ -62,7 +68,7 @@ public class RegisterController {
             return;
         }
 
-        Optional<User> registeredUser = userRepository.register(username, password);
+        Optional<User> registeredUser = authenticationService.register(username, password);
         if (!registeredUser.isPresent()) {
             view.setMessage("That username is already in use.");
             return;

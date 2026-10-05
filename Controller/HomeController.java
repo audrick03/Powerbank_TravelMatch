@@ -1,13 +1,8 @@
-package Controller;
+package controller;
 
-import Model.Destination;
-import Model.PreferenceModel;
-import Repository.DestinationRepository;
-import View.ExplorePanel;
-import View.HomeView;
-import View.LoginView;
-import View.PreferenceView;
-import View.RecommendationView;
+import model.*;
+import repository.*;
+import view.*;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -26,8 +21,9 @@ public class HomeController {
     private final DestinationRepository repository = DestinationRepository.getInstance();
 
     private final HomeView homeView;
-    private final LoginView loginView;
     private final ExplorePanel explore;
+    private LoginView loginView;
+    private LoginController loginController;
 
     // Current selections
     private Level level = Level.HOME;
@@ -40,6 +36,9 @@ public class HomeController {
         this.homeView = homeView;
         this.loginView = loginView;
         this.explore = homeView.getExplorePanel();
+        if (loginView != null) {
+            this.loginController = new LoginController(loginView);
+        }
 
         attachListeners();
         updateRegionCounts();
@@ -199,21 +198,20 @@ public class HomeController {
 
     // Show the login page
     private void showLogin() {
-        LoginController loginController = new LoginController(loginView);
-        loginView.setVisible(true);
+        if (loginView == null) {
+            loginView = new LoginView();
+            loginController = new LoginController(loginView);
+        }
         loginController.showView();
         homeView.setVisible(false);
     }
 
     private void showPreferences() {
         PreferenceView preferenceView = new PreferenceView();
-        PreferenceController preferenceController = new PreferenceController(preferenceView, null);
-
-        preferenceController.showView();
-        preferenceView.setVisible(true);
-
         PreferenceModel preferenceModel = new PreferenceModel();
-        preferenceController = new PreferenceController(preferenceView, preferenceModel);
+        PreferenceController preferenceController =
+                new PreferenceController(preferenceView, preferenceModel);
+        preferenceController.showView();
 
         homeView.setVisible(false);
     }

@@ -1,10 +1,8 @@
-package Controller;
+package controller;
 
-import Model.Destination;
-import Model.PreferenceModel;
-import Repository.DestinationRepository;
-import View.PreferenceView;
-import View.RecommendationView;
+import model.*;
+import repository.*;
+import view.*;
 
 import java.util.List;
 
@@ -83,13 +81,10 @@ public class RecommendationController {
     // Same way HomeController opens the preference screen
     private void openPreferences() {
         PreferenceView preferenceView = new PreferenceView();
-        PreferenceController preferenceController = new PreferenceController(preferenceView, null);
-
-        preferenceController.showView();
-        preferenceView.setVisible(true);
-
         PreferenceModel preferenceModel = new PreferenceModel();
-        preferenceController = new PreferenceController(preferenceView, preferenceModel);
+        PreferenceController preferenceController =
+                new PreferenceController(preferenceView, preferenceModel);
+        preferenceController.showView();
 
         view.dispose();
     }

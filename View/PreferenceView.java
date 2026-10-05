@@ -1,4 +1,4 @@
-package View;
+package view;
 
 import javax.swing.*;
 import java.awt.*;
@@ -72,7 +72,7 @@ public class PreferenceView extends JFrame {
         initComponents();
         layoutComponents();
 
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(500, 550);
         setResizable(false);
         setLocationRelativeTo(null);

@@ -1,6 +1,6 @@
-package Controller;
+package controller;
 
-import View.ReviewView;
+import view.*;
 
 public class ReviewController {
 

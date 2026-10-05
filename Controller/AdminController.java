@@ -1,22 +1,19 @@
-package Controller;
+package controller;
 
-import View.AdminView;
+import view.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class AdminController {
     private AdminView adminView;
 
-    // commit
     public AdminController(AdminView adminView) {
         this.adminView = adminView;
         this.adminView.addDestinationListener(new AddDestinationListener());
         this.adminView.viewStatsListener(new ViewStatsListener());
         this.adminView.logoutListener(new LogoutListener());
-        this.adminView.clearListener(new ClearListener()); // ✅ Added clear button listener
+        this.adminView.clearListener(new ClearListener());
     }
-
-    //bossnaigcomit
 
     // ➕ Add Destination
     class AddDestinationListener implements ActionListener {

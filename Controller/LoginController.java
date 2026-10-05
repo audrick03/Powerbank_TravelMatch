@@ -1,34 +1,32 @@
-package Controller;
-
-import Model.PreferenceModel;
-import Model.User;
-import Repository.UserRepository;
-import View.AdminView;
-import View.LoginView;
-import View.PreferenceView;
-import View.RegisterView;
-import View.HomeView;
+package controller;
 
 import java.util.Optional;
 
-//test
+import model.*;
+import repository.*;
+import service.*;
+import view.*;
 
 public class LoginController {
 
     private final LoginView loginView;
-    private final UserRepository userRepository;
+    private final AuthenticationService authenticationService;
 
     public LoginController(LoginView loginView) {
         this(loginView, new UserRepository());
     }
 
     public LoginController(LoginView loginView, UserRepository userRepository) {
-        if (loginView == null || userRepository == null) {
-            throw new IllegalArgumentException("Login view and user repository are required");
+        this(loginView, new AuthenticationService(userRepository));
+    }
+
+    public LoginController(LoginView loginView, AuthenticationService authenticationService) {
+        if (loginView == null || authenticationService == null) {
+            throw new IllegalArgumentException("Login view and authentication service are required");
         }
 
         this.loginView = loginView;
-        this.userRepository = userRepository;
+        this.authenticationService = authenticationService;
         loginView.addLoginListener(event -> login());
         loginView.addRegisterListener(event -> openRegisterView());
         loginView.addBackToHomeListener(event -> openHomeView());
@@ -36,7 +34,7 @@ public class LoginController {
 
     private void login() {
         Optional<User> authenticatedUser =
-            userRepository.authenticate(loginView.getUsername(), loginView.getPassword());
+            authenticationService.authenticate(loginView.getUsername(), loginView.getPassword());
 
         if (!authenticatedUser.isPresent()) {
             loginView.showError("Invalid username or password.");
@@ -56,7 +54,7 @@ public class LoginController {
         RegisterView registerView = new RegisterView();
         new RegisterController(
                 registerView,
-                userRepository,
+                authenticationService,
                 user -> {
                     loginView.setUsername(user.getUsername());
                     loginView.showView();
@@ -85,7 +83,6 @@ public class LoginController {
     }
 
     public void showView() {
-        // TODO Auto-generated method stub
         loginView.showView();
     }
 

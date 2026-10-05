@@ -1,4 +1,4 @@
-package Model;
+package model;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,7 +11,7 @@ import java.util.Map;
  * Region + category + destination decide which activities are shown,
  * so every destination carries its OWN activity list (never shared).
  */
-public class Destination {
+public class DestinationModel {
 
     private String name;
     private String province;
@@ -28,7 +28,7 @@ public class Destination {
     // Optional per-category activity lists (e.g. Davao City is both City and Cultural)
     private final Map<String, List<String>> categoryActivities = new LinkedHashMap<>();
 
-    public Destination(String name, String province, String region,
+    public DestinationModel(String name, String province, String region,
                        List<String> categories, String description) {
         this.name = name;
         this.province = province;

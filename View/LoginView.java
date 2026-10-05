@@ -1,4 +1,4 @@
-package View;
+package view;
 
 import javax.swing.*;
 import java.awt.*;
@@ -30,7 +30,7 @@ public class LoginView extends JFrame {
         layoutComponents();
         wireInternalBehavior();
 
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(420, 480);
         setResizable(false);
         setLocationRelativeTo(null); // center on screen

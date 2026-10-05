@@ -1,5 +1,6 @@
-package View;
+package view;
 
+import controller.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -142,7 +143,7 @@ public class AdminView extends JFrame {
 
     public static void main(String[] args) {
         AdminView view = new AdminView();
-        new Controller.AdminController(view);
+        new AdminController(view);
         view.setVisible(true);
     }
 }

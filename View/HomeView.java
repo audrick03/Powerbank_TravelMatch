@@ -1,4 +1,6 @@
-package View;
+package view;
+
+import repository.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -11,7 +13,6 @@ import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
-import Repository.DestinationRepository;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;

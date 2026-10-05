@@ -1,7 +1,7 @@
-package View;
+package view;
 
-import Model.Destination;
-import Repository.DestinationRepository;
+import model.*;
+import repository.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;

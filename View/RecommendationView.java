@@ -1,7 +1,8 @@
-package View;
+package view;
 
-import Model.Destination;
-import Repository.DestinationRepository;
+import controller.*;
+import model.*;
+import repository.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -78,7 +79,7 @@ public class RecommendationView extends JFrame {
         setTitle("TravelMatch - Recommendations");
         setSize(1280, 860);
         setMinimumSize(new Dimension(1000, 700));
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
         JPanel root = new JPanel(new BorderLayout());
@@ -994,7 +995,7 @@ public class RecommendationView extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             RecommendationView view = new RecommendationView();
-            new Controller.RecommendationController(view);
+            new RecommendationController(view);
             view.setVisible(true);
         });
     }
