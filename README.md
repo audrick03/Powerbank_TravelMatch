@@ -7,8 +7,7 @@ The SQLite JDBC driver is declared in `pom.xml`; build and run the application
 with Maven:
 
 ```sh
-mvn compile
-mvn exec:java -Dexec.mainClass=Main
+mvn compile exec:java
 ```
 
 The repository creates its `users` table on startup. Demo accounts are

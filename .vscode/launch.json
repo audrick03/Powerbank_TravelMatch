@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch TravelMatch",
+            "request": "launch",
+            "mainClass": "Main",
+            "cwd": "${workspaceFolder}",
+            "classPaths": [
+                "${workspaceFolder}/target/classes",
+                "${userHome}/.m2/repository/org/xerial/sqlite-jdbc/3.49.1.0/sqlite-jdbc-3.49.1.0.jar"
+            ],
+            "preLaunchTask": "Maven: compile TravelMatch"
+        }
+    ]
+}
