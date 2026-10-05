@@ -1,87 +1,62 @@
 package Controller;
 
+import Model.Destination;
+import Model.PreferenceModel;
+import Repository.DestinationRepository;
+import View.ExplorePanel;
 import View.HomeView;
 import View.LoginView;
 import View.PreferenceView;
+import View.RecommendationView;
 
-import Controller.PreferenceController;
-import Model.PreferenceModel;
-
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Home flow:
+ *   REGION -> CATEGORY -> DESTINATION -> RECOMMENDED ACTIVITIES / PLACES / DETAILS
+ * The controller remembers what the user selected, so each step only shows
+ * data for that region + category + destination.
+ */
 public class HomeController {
 
-    private static final String BEACH = "Beach";
-    private static final String MOUNTAIN = "Mountain";
-    private static final String CITY = "City";
-    private static final String ADVENTURE = "Adventure";
-    private static final String CULTURAL = "Cultural";
+    private enum Level { HOME, CATEGORIES, LIST, DETAIL }
 
-    private static final String[] CATEGORIES = {
-        BEACH, MOUNTAIN, CITY, ADVENTURE, CULTURAL
-    };
-
-    // Destination name -> categories
-    private static final Map<String, List<String>> DESTINATIONS =
-            new LinkedHashMap<>();
-
-    static {
-        add("Batad Rice Terraces", CULTURAL, MOUNTAIN);
-        add("Batanes", MOUNTAIN, BEACH);
-        add("Biri Island", ADVENTURE, BEACH);
-        add("Apo Reef Natural Park", ADVENTURE, BEACH);
-        add("Mount Pulag", MOUNTAIN, ADVENTURE);
-        add("Sagada", MOUNTAIN, ADVENTURE);
-        add("Gigantes Islands", BEACH, ADVENTURE);
-        add("Coron", BEACH, ADVENTURE);
-        add("Vigan City", CULTURAL, CITY);
-        add("Mount Dulang-Dulang", MOUNTAIN, ADVENTURE);
-        add("Mount Pinatubo", ADVENTURE, MOUNTAIN);
-        add("Siquijor", BEACH, CULTURAL);
-        add("Siargao Island", BEACH, ADVENTURE);
-        add("El Nido", BEACH);
-        add("Cebu City", CITY, CULTURAL);
-        add("San Fernando City (La Union)", BEACH, ADVENTURE);
-        add("Davao City", CITY, MOUNTAIN);
-        add("Intramuros (City of Manila)", CULTURAL);
-        add("Binondo (City of Manila)", CULTURAL);
-        add("La Mesa Watershed Reserve (Quezon City)", MOUNTAIN);
-        add("Poblacion (Makati City)", CITY);
-        add("National Museum Complex (City of Manila)", CULTURAL);
-        add("Bonifacio Global City (BGC)", CITY);
-        add("Las Piñas–Parañaque Critical Habitat", BEACH);
-        add("Ninoy Aquino Parks & Wildlife (Quezon City)", ADVENTURE);
-        add("Ayala Triangle & Greenbelt (Makati City)", CITY);
-    }
-
-    private static void add(String name, String... categories) {
-        DESTINATIONS.put(name, Arrays.asList(categories));
-    }
+    private final DestinationRepository repository = DestinationRepository.getInstance();
 
     private final HomeView homeView;
     private final LoginView loginView;
+    private final ExplorePanel explore;
+
+    // Current selections
+    private Level level = Level.HOME;
+    private String selectedRegion;
+    private String selectedCategory;   // null when the list came from a search
+    private boolean fromSearch;
+    private Runnable restoreList = () -> {};
 
     public HomeController(HomeView homeView, LoginView loginView) {
         this.homeView = homeView;
         this.loginView = loginView;
+        this.explore = homeView.getExplorePanel();
 
         attachListeners();
-        updateCategoryCounts();
+        updateRegionCounts();
     }
 
-    // Connect buttons and category cards to controller methods
+    // Connect buttons and cards to controller methods
     private void attachListeners() {
         homeView.addLoginListener(e -> showLogin());
         homeView.addHomeListener(e -> showHome());
         homeView.addSearchListener(e -> handleSearch());
         homeView.addPreferenceListener(e -> showPreferences());
+        homeView.addRecommendationListener(e -> showRecommendations());
 
-        // Category card click listener
-        homeView.addCategoryListener(this::handleCategoryClick);
+        homeView.addRegionListener(this::handleRegionClick);
+        explore.addCategoryListener(this::handleCategoryClick);
+        explore.addDestinationListener(this::handleDestinationClick);
+        explore.addBackListener(e -> goBack());
     }
 
     // Show the home page
@@ -89,16 +64,138 @@ public class HomeController {
         showHome();
     }
 
-    // HOME button: back to the home page (hero + categories)
+    // =========================
+    // NAVIGATION
+    // =========================
+
+    // HOME button: back to the home page (hero + regions)
     private void showHome() {
         if (loginView != null) {
             loginView.setVisible(false);
         }
 
+        level = Level.HOME;
+        selectedRegion = null;
+        selectedCategory = null;
+        fromSearch = false;
+
+        updateRegionCounts();
         homeView.showHomePage();
         homeView.setVisible(true);
         homeView.toFront();
     }
+
+    // Back button inside the explore pages: one step up the flow
+    private void goBack() {
+        switch (level) {
+            case DETAIL:
+                restoreList.run();
+                break;
+            case LIST:
+                if (fromSearch || selectedRegion == null) {
+                    showHome();
+                } else {
+                    handleRegionClick(selectedRegion);
+                }
+                break;
+            default:
+                showHome();
+                break;
+        }
+    }
+
+    // REGION -> CATEGORY
+    private void handleRegionClick(String region) {
+        selectedRegion = region;
+        selectedCategory = null;
+        fromSearch = false;
+        level = Level.CATEGORIES;
+
+        explore.showCategories(region, repository.countByCategory(region));
+        homeView.showExplorePage();
+    }
+
+    // CATEGORY -> DESTINATION LIST (only this region + category)
+    private void handleCategoryClick(String category) {
+        selectedCategory = category;
+        showCategoryList();
+    }
+
+    private void showCategoryList() {
+        List<Destination> list =
+                repository.getByRegionAndCategory(selectedRegion, selectedCategory);
+
+        explore.showDestinations(
+                DestinationRepository.label(selectedCategory) + " in " + selectedRegion,
+                list.size() + (list.size() == 1 ? " destination" : " destinations"),
+                selectedRegion + "  ›  " + DestinationRepository.label(selectedCategory),
+                list,
+                selectedCategory
+        );
+
+        level = Level.LIST;
+        fromSearch = false;
+        restoreList = this::showCategoryList;
+        homeView.showExplorePage();
+    }
+
+    // DESTINATION -> activities, places, details
+    private void handleDestinationClick(Destination destination) {
+        level = Level.DETAIL;
+        explore.showDetail(destination, selectedCategory);
+        homeView.showExplorePage();
+    }
+
+    // =========================
+    // SEARCH
+    // =========================
+
+    private void handleSearch() {
+        String query = homeView.getSearchText();
+
+        if (query.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    homeView,
+                    "Please enter a destination or preference.",
+                    "Search",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        showSearchResults(query);
+
+        if (repository.search(query).isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    homeView,
+                    "No destinations found for: " + query,
+                    "No Results",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+    }
+
+    private void showSearchResults(String query) {
+        List<Destination> results = repository.search(query);
+
+        selectedCategory = null;
+        fromSearch = true;
+        level = Level.LIST;
+        restoreList = () -> showSearchResults(query);
+
+        explore.showDestinations(
+                "Search Results for \"" + query + "\"",
+                results.size() + " found",
+                "Search",
+                results,
+                null
+        );
+        homeView.showExplorePage();
+    }
+
+    // =========================
+    // OTHER SCREENS
+    // =========================
 
     // Show the login page
     private void showLogin() {
@@ -118,87 +215,21 @@ public class HomeController {
         PreferenceModel preferenceModel = new PreferenceModel();
         preferenceController = new PreferenceController(preferenceView, preferenceModel);
 
-
         homeView.setVisible(false);
     }
 
-    // Update category counts on the home page
-    private void updateCategoryCounts() {
-        for (String category : CATEGORIES) {
-            homeView.setCategoryCount(
-                    category,
-                    getByCategory(category).size()
-            );
+    // Recommendations button: flat list window (reads from the repository)
+    private void showRecommendations() {
+        RecommendationView view = new RecommendationView();
+        view.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        new RecommendationController(view);
+        view.setVisible(true);
+    }
+
+    // Region cards show how many destinations they contain
+    private void updateRegionCounts() {
+        for (String region : DestinationRepository.REGIONS) {
+            homeView.setRegionCount(region, repository.getByRegion(region).size());
         }
-    }
-
-    // Get all destinations (name -> categories) belonging to a category
-    private Map<String, List<String>> getByCategory(String category) {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-
-        DESTINATIONS.forEach((name, categories) -> {
-            if (categories.contains(category)) {
-                result.put(name, categories);
-            }
-        });
-
-        return result;
-    }
-
-    // Search by destination name or category
-    private Map<String, List<String>> searchDestinations(String query) {
-        String q = query.trim().toLowerCase();
-        Map<String, List<String>> result = new LinkedHashMap<>();
-
-        DESTINATIONS.forEach((name, categories) -> {
-            boolean nameMatch = name.toLowerCase().contains(q);
-            boolean categoryMatch = categories.stream()
-                    .anyMatch(c -> c.equalsIgnoreCase(q));
-
-            if (nameMatch || categoryMatch) {
-                result.put(name, categories);
-            }
-        });
-
-        return result;
-    }
-
-    // Handle category card clicks
-    private void handleCategoryClick(String category) {
-        homeView.showCategoryDestinations(
-                category,
-                getByCategory(category)
-        );
-    }
-
-    // Handle search button
-    private void handleSearch() {
-        String query = homeView.getSearchText();
-
-        if (query.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    homeView,
-                    "Please enter a destination or preference.",
-                    "Search",
-                    JOptionPane.WARNING_MESSAGE
-            );
-            return;
-        }
-
-        Map<String, List<String>> results = searchDestinations(query);
-
-        if (results.isEmpty()) {
-            homeView.showSearchResults(query, results);
-            JOptionPane.showMessageDialog(
-                    homeView,
-                    "No destinations found for: " + query,
-                    "No Results",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-            return;
-        }
-
-        // Display search results as cards in the UI
-        homeView.showSearchResults(query, results);
     }
 }

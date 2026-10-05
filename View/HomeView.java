@@ -11,6 +11,7 @@ import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
+import Repository.DestinationRepository;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -29,6 +30,7 @@ public class HomeView extends JFrame {
     // Page names for the CardLayout
     private static final String PAGE_HOME = "HOME";
     private static final String PAGE_DISCOVER = "DISCOVER";
+    private static final String PAGE_EXPLORE = "EXPLORE";
 
     // Color palette
     private static final Color PRIMARY = new Color(0x1D9E75);
@@ -58,6 +60,13 @@ public class HomeView extends JFrame {
     // Category click listener
     private Consumer<String> categoryListener = category -> {};
 
+    // Region click listener + region count labels (Luzon / Visayas / Mindanao)
+    private Consumer<String> regionListener = region -> {};
+    private final Map<String, JLabel> regionCountLabels = new HashMap<>();
+
+    // Region -> Category -> Destination -> Recommendation pages
+    private ExplorePanel explorePanel;
+
     // Page switching (Home page <-> Destination cards page)
     private CardLayout pageLayout;
     private JPanel pageContainer;
@@ -85,6 +94,8 @@ public class HomeView extends JFrame {
         pageContainer.setBackground(BACKGROUND);
         pageContainer.add(createHomePage(), PAGE_HOME);
         pageContainer.add(createDiscoverPage(), PAGE_DISCOVER);
+        explorePanel = new ExplorePanel();
+        pageContainer.add(explorePanel, PAGE_EXPLORE);
 
         mainPanel.add(navBar, BorderLayout.NORTH);
         mainPanel.add(pageContainer, BorderLayout.CENTER);
@@ -151,7 +162,7 @@ public class HomeView extends JFrame {
         content.setBackground(BACKGROUND);
 
         JPanel heroPanel = createHeroPanel();
-        JPanel categoryPanel = createCategorySection();
+        JPanel categoryPanel = createRegionSection();
 
         heroPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         categoryPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -641,6 +652,128 @@ public class HomeView extends JFrame {
                 + "\" (" + results.size() + ")"
         );
         populateDestinationCards(results);
+    }
+
+    // =========================
+    // REGION SECTION (home page)
+    // =========================
+
+    private JPanel createRegionSection() {
+        JPanel section = new JPanel(new BorderLayout());
+        section.setBackground(BACKGROUND);
+        section.setBorder(new EmptyBorder(20, 35, 25, 35));
+
+        JLabel lblRegions = new JLabel("Explore the Philippines");
+        lblRegions.setFont(new Font(FONT_NAME, Font.BOLD, 30));
+        lblRegions.setForeground(TEXT_DARK);
+        lblRegions.setBorder(new EmptyBorder(0, 0, 15, 0));
+
+        JPanel cardsPanel = new JPanel(new GridLayout(1, 3, 22, 22));
+        cardsPanel.setBackground(BACKGROUND);
+        for (String region : DestinationRepository.REGIONS) {
+            cardsPanel.add(createRegionCard(region));
+        }
+
+        section.add(lblRegions, BorderLayout.NORTH);
+        section.add(cardsPanel, BorderLayout.CENTER);
+        return section;
+    }
+
+    // Photo: images/Luzon.jpg, images/Visayas.jpg, images/Mindanao.jpg
+    private JPanel createRegionCard(String region) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(cardBorder(false));
+        card.setPreferredSize(new Dimension(200, 360));
+
+        BufferedImage photo = loadImage(region);
+        CoverImagePanel imagePanel = new CoverImagePanel(photo, PRIMARY, null);
+        imagePanel.setLayout(new GridBagLayout());
+        imagePanel.setPreferredSize(new Dimension(200, 230));
+        if (photo == null) {
+            JLabel lblIcon = new JLabel("🗺");
+            lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 54));
+            imagePanel.add(lblIcon);
+        }
+
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setBackground(Color.WHITE);
+        infoPanel.setBorder(new EmptyBorder(12, 16, 14, 16));
+
+        JLabel lblName = new JLabel(region.toUpperCase());
+        lblName.setFont(new Font(FONT_NAME, Font.BOLD, 22));
+        lblName.setForeground(TEXT_DARK);
+
+        JLabel lblDesc = new JLabel(
+                "<html><body style='width:260px'>"
+                + DestinationRepository.regionDescription(region)
+                + "</body></html>");
+        lblDesc.setFont(new Font(FONT_NAME, Font.PLAIN, 14));
+        lblDesc.setForeground(TEXT_MUTED);
+
+        JLabel lblCount = new JLabel(DEFAULT_COUNT_TEXT);
+        lblCount.setFont(new Font(FONT_NAME, Font.BOLD, 13));
+        lblCount.setForeground(PRIMARY);
+        regionCountLabels.put(region, lblCount);
+
+        JLabel lblExplore = new JLabel("Explore →");
+        lblExplore.setFont(new Font(FONT_NAME, Font.BOLD, 15));
+        lblExplore.setForeground(PRIMARY);
+
+        infoPanel.add(lblName);
+        infoPanel.add(Box.createVerticalStrut(4));
+        infoPanel.add(lblDesc);
+        infoPanel.add(Box.createVerticalStrut(6));
+        infoPanel.add(lblCount);
+        infoPanel.add(Box.createVerticalStrut(8));
+        infoPanel.add(lblExplore);
+
+        card.add(imagePanel, BorderLayout.CENTER);
+        card.add(infoPanel, BorderLayout.SOUTH);
+
+        MouseAdapter clickListener = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                regionListener.accept(region);
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                card.setBorder(cardBorder(true));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                Point p = SwingUtilities.convertPoint(
+                        e.getComponent(), e.getPoint(), card);
+                if (!card.contains(p)) {
+                    card.setBorder(cardBorder(false));
+                }
+            }
+        };
+        addClickListenerRecursively(card, clickListener);
+        return card;
+    }
+
+    public void addRegionListener(Consumer<String> listener) {
+        this.regionListener = listener;
+    }
+
+    public void setRegionCount(String region, int count) {
+        JLabel label = regionCountLabels.get(region);
+        if (label != null) {
+            label.setText(count + (count == 1 ? " destination" : " destinations"));
+        }
+    }
+
+    // The explore pages (categories / destinations / recommendation)
+    public ExplorePanel getExplorePanel() {
+        return explorePanel;
+    }
+
+    public void showExplorePage() {
+        pageLayout.show(pageContainer, PAGE_EXPLORE);
     }
 
     // =========================
