@@ -1,5 +1,7 @@
 package view;
 
+import model.PreferenceModel;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -20,6 +22,7 @@ public class PreferenceView extends JFrame {
     private final JComboBox<String> budgetBox;
     private final JComboBox<String> monthBox;
     private final JComboBox<String> groupTypeBox;
+    private final JComboBox<String> activityLevelBox;
 
     private final JCheckBox beachInterest;
     private final JCheckBox adventureInterest;
@@ -38,9 +41,9 @@ public class PreferenceView extends JFrame {
 
         budgetBox = new JComboBox<>(new String[]{
                 "--- Select ---",
-                "Low Budget",
-                "Medium Budget",
-                "High Budget"
+                "Low Budget (Under ₱3500 per person)",
+                "Medium Budget (₱3,500 to ₱8,000 per person)",
+                "High Budget (₱8,000+ per person)"
         });
 
         monthBox = new JComboBox<>(new String[]{
@@ -54,8 +57,14 @@ public class PreferenceView extends JFrame {
                 "Solo Traveler",
                 "Couple",
                 "Family",
-                "Friends",
-                "Business"
+                "Friends"
+        });
+
+        activityLevelBox = new JComboBox<>(new String[]{
+                "--- Select ---",
+                "Low Activity Level",
+                "Medium Activity Level",
+                "Hard Activity Level"
         });
 
         beachInterest = new JCheckBox("Beach");
@@ -73,7 +82,7 @@ public class PreferenceView extends JFrame {
         layoutComponents();
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(500, 550);
+        setSize(600, 650);
         setResizable(false);
         setLocationRelativeTo(null);
     }
@@ -143,6 +152,12 @@ public class PreferenceView extends JFrame {
         content.add(groupTypeBox, gc);
 
         gc.gridy = row++;
+        content.add(new JLabel("Activity Level"), gc);
+        
+        gc.gridy = row++;
+        content.add(activityLevelBox, gc);
+
+        gc.gridy = row++;
         content.add(new JLabel("Interests"), gc);
 
         JPanel interestsPanel = new JPanel(new GridLayout(0, 2));
@@ -188,6 +203,10 @@ public class PreferenceView extends JFrame {
         return (String) groupTypeBox.getSelectedItem();
     }
 
+    public String getActivityLevel() {
+        return (String) activityLevelBox.getSelectedItem();
+    }
+
     public String[] getSelectedInterests() {
 
         java.util.List<String> interests = new java.util.ArrayList<>();
@@ -199,6 +218,25 @@ public class PreferenceView extends JFrame {
         if (foodInterest.isSelected()) interests.add("Food");
 
         return interests.toArray(new String[0]);
+    }
+
+    public void setPreferences(PreferenceModel preferences) {
+        if (preferences == null) {
+            throw new IllegalArgumentException("Preferences are required");
+        }
+
+        budgetBox.setSelectedItem(preferences.getBudget());
+        monthBox.setSelectedItem(preferences.getMonth());
+        groupTypeBox.setSelectedItem(preferences.getGroupType());
+        activityLevelBox.setSelectedItem(preferences.getActivityLevel());
+
+        java.util.List<String> interests =
+                java.util.Arrays.asList(preferences.getInterests());
+        beachInterest.setSelected(interests.contains("Beach"));
+        adventureInterest.setSelected(interests.contains("Adventure"));
+        natureInterest.setSelected(interests.contains("Nature"));
+        cultureInterest.setSelected(interests.contains("Culture"));
+        foodInterest.setSelected(interests.contains("Food"));
     }
 
     // ---------- Register Listeners ----------
@@ -230,6 +268,7 @@ public class PreferenceView extends JFrame {
         budgetBox.setSelectedIndex(0);
         monthBox.setSelectedIndex(0);
         groupTypeBox.setSelectedIndex(0);
+        activityLevelBox.setSelectedIndex(0);
         beachInterest.setSelected(false);
         adventureInterest.setSelected(false);
         natureInterest.setSelected(false);

@@ -7,6 +7,7 @@
             "request": "launch",
             "mainClass": "Main",
             "cwd": "${workspaceFolder}",
+            "vmArgs": "--enable-native-access=ALL-UNNAMED",
             "classPaths": [
                 "${workspaceFolder}/target/classes",
                 "${userHome}/.m2/repository/org/xerial/sqlite-jdbc/3.49.1.0/sqlite-jdbc-3.49.1.0.jar"

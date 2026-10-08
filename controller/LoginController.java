@@ -7,26 +7,39 @@ import repository.*;
 import service.*;
 import view.*;
 
+import java.util.function.Consumer;
+
 public class LoginController {
 
     private final LoginView loginView;
     private final AuthenticationService authenticationService;
+    private final Consumer<UserModel> onUserLoggedIn;
 
     public LoginController(LoginView loginView) {
-        this(loginView, new UserRepository());
+        this(loginView, new AuthenticationService(new UserRepository()), null);
     }
 
     public LoginController(LoginView loginView, UserRepository userRepository) {
-        this(loginView, new AuthenticationService(userRepository));
+        this(loginView, new AuthenticationService(userRepository), null);
     }
 
     public LoginController(LoginView loginView, AuthenticationService authenticationService) {
+        this(loginView, authenticationService, null);
+    }
+
+    public LoginController(LoginView loginView, Consumer<UserModel> onUserLoggedIn) {
+        this(loginView, new AuthenticationService(new UserRepository()), onUserLoggedIn);
+    }
+
+    public LoginController(LoginView loginView, AuthenticationService authenticationService,
+                           Consumer<UserModel> onUserLoggedIn) {
         if (loginView == null || authenticationService == null) {
             throw new IllegalArgumentException("Login view and authentication service are required");
         }
 
         this.loginView = loginView;
         this.authenticationService = authenticationService;
+        this.onUserLoggedIn = onUserLoggedIn;
         loginView.addLoginListener(event -> login());
         loginView.addRegisterListener(event -> openRegisterView());
         loginView.addBackToHomeListener(event -> openHomeView());
@@ -45,8 +58,11 @@ public class LoginController {
         loginView.clearError();
         if (user.isAdmin()) {
             openAdminView();
+        } else if (onUserLoggedIn != null) {
+            loginView.closeView();
+            onUserLoggedIn.accept(user);
         } else {
-            openPreferenceView();
+            openPreferenceView(user);
         }
     }
 
@@ -66,14 +82,19 @@ public class LoginController {
         registerView.showView();
     }
 
-    private void openPreferenceView() {
+    private void openPreferenceView(UserModel user) {
         PreferenceView preferenceView = new PreferenceView();
         PreferenceModel preferenceModel = new PreferenceModel();
-
-        new PreferenceController(preferenceView, preferenceModel);
+        PreferenceController preferenceController = new PreferenceController(
+                preferenceView,
+                preferenceModel,
+                user,
+                new PreferenceService(
+                        new PreferenceRepository(),
+                        DestinationRepository.getInstance()));
 
         loginView.closeView();
-        preferenceView.showView();
+        preferenceController.showView();
     }
 
     private void openAdminView() {

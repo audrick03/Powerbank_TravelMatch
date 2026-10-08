@@ -2,6 +2,7 @@ package controller;
 
 import model.*;
 import repository.*;
+import service.*;
 import view.*;
 
 import javax.swing.JFrame;
@@ -24,6 +25,8 @@ public class HomeController {
     private final ExplorePanel explore;
     private LoginView loginView;
     private LoginController loginController;
+    private UserModel currentUser;
+    private boolean openPreferencesAfterLogin;
 
     // Current selections
     private Level level = Level.HOME;
@@ -33,11 +36,17 @@ public class HomeController {
     private Runnable restoreList = () -> {};
 
     public HomeController(HomeView homeView, LoginView loginView) {
+        this(homeView, loginView, null);
+    }
+
+    public HomeController(HomeView homeView, LoginView loginView, UserModel currentUser) {
         this.homeView = homeView;
         this.loginView = loginView;
+        this.currentUser = currentUser;
+        homeView.setLoginButtonText(currentUser == null ? "Login" : "Logout");
         this.explore = homeView.getExplorePanel();
         if (loginView != null) {
-            this.loginController = new LoginController(loginView);
+            createLoginController();
         }
 
         attachListeners();
@@ -198,29 +207,84 @@ public class HomeController {
 
     // Show the login page
     private void showLogin() {
+        if (currentUser != null) {
+            logout();
+            return;
+        }
         if (loginView == null) {
             loginView = new LoginView();
-            loginController = new LoginController(loginView);
+            createLoginController();
         }
         loginController.showView();
         homeView.setVisible(false);
     }
 
+    private void createLoginController() {
+        loginController = new LoginController(loginView, this::handleLoginSuccess);
+    }
+
+    private void handleLoginSuccess(UserModel user) {
+        currentUser = user;
+        homeView.setLoginButtonText("Logout");
+        showHome();
+
+        if (openPreferencesAfterLogin) {
+            openPreferencesAfterLogin = false;
+            confirmPreferenceChange();
+        }
+    }
+
+    private void logout() {
+        currentUser = null;
+        openPreferencesAfterLogin = false;
+        homeView.setLoginButtonText("Login");
+        showHome();
+    }
+
     private void showPreferences() {
+        if (currentUser == null) {
+            openPreferencesAfterLogin = true;
+            showLogin();
+            return;
+        }
+        confirmPreferenceChange();
+    }
+
+    private void confirmPreferenceChange() {
+        int choice = JOptionPane.showConfirmDialog(
+                homeView,
+                "Do you want to change your saved travel preferences?",
+                "Change Preferences",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (choice == JOptionPane.YES_OPTION) {
+            openPreferenceView();
+        }
+    }
+
+    private void openPreferenceView() {
         PreferenceView preferenceView = new PreferenceView();
         PreferenceModel preferenceModel = new PreferenceModel();
-        PreferenceController preferenceController =
-                new PreferenceController(preferenceView, preferenceModel);
-        preferenceController.showView();
-
+        PreferenceController preferenceController = new PreferenceController(
+                preferenceView,
+                preferenceModel,
+                currentUser,
+                new PreferenceService(
+                        new PreferenceRepository(),
+                        repository));
         homeView.setVisible(false);
+        preferenceController.showView();
     }
 
     // Recommendations button: flat list window (reads from the repository)
     private void showRecommendations() {
         RecommendationView view = new RecommendationView();
         view.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        new RecommendationController(view);
+        new RecommendationController(
+                view,
+                currentUser,
+                this::showPreferences,
+                this::logout);
         view.setVisible(true);
     }
 

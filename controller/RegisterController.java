@@ -13,6 +13,10 @@ import java.util.function.Consumer;
 public class RegisterController {
 
     private static final int MINIMUM_PASSWORD_LENGTH = 8;
+    private static final int MAXIMUM_PASSWORD_LENGTH = 20;
+
+    private static final int MAXIMUM_USERNAME_LENGTH = 15;
+    private static final int MINIMUM_USERNAME_LENGTH = 3;
 
     private final RegisterView view;
     private final AuthenticationService authenticationService;
@@ -51,18 +55,52 @@ public class RegisterController {
         String password = view.getPassword();
         String confirmedPassword = view.getConfirmedPassword();
 
-        if (username.isEmpty()) {
+        // username validation
+
+        if (username == null || username.isEmpty()) {
             view.setMessage("Please enter a username.");
             return;
         }
-        if (password.isEmpty()) {
+
+        username = username.trim();
+
+        if (!username.matches("[A-Za-z0-9]+")) {
+            view.setMessage("Username can only contain letters and numbers.");
+            return;
+        }
+
+        if (username.length() > MAXIMUM_USERNAME_LENGTH) {
+            view.setMessage("Maximum username length is " + MAXIMUM_USERNAME_LENGTH + " characters.");
+            return;
+        }
+
+        if (username.length() < MINIMUM_USERNAME_LENGTH) {
+            view.setMessage("Username must be at least " + MINIMUM_USERNAME_LENGTH + " characters.");
+            return;
+        }
+
+        // Password validation
+    
+        if (password == null || password.isEmpty()) {
             view.setMessage("Please enter a password.");
             return;
         }
         if (password.length() < MINIMUM_PASSWORD_LENGTH) {
-            view.setMessage("Password must be at least 8 characters.");
+            view.setMessage("Password must be at least " + MINIMUM_PASSWORD_LENGTH + " characters.");
             return;
         }
+        if (password.length() > MAXIMUM_PASSWORD_LENGTH) {
+            view.setMessage("Maximum password length is " + MAXIMUM_PASSWORD_LENGTH + " characters.");
+            return;
+        }
+
+        // Password confirmation
+        
+        if (confirmedPassword == null || confirmedPassword.isEmpty()) {
+            view.setMessage("Please confirm your password.");
+            return;
+        }
+
         if (!password.equals(confirmedPassword)) {
             view.setMessage("Passwords do not match.");
             return;

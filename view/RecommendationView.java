@@ -50,7 +50,7 @@ public class RecommendationView extends JFrame {
     // top bar
     private final JButton btnHome = new NavButton("🏠  Home");
     private final JButton btnPreferences = new NavButton("👤  Preferences");
-    private final JButton btnLogout = new NavButton("🚪  Logout");
+    private final JButton btnLogout = new NavButton("🚪  Login");
 
     // destination section
     private final JLabel lblDestIcon = new JLabel();
@@ -135,6 +135,10 @@ public class RecommendationView extends JFrame {
     public void addPreferenceListener(ActionListener l)  { btnPreferences.addActionListener(l); }
     public void addLogoutListener(ActionListener l)      { btnLogout.addActionListener(l); }
     public void addBackToCategoriesListener(ActionListener l) { btnBackToCategories.addActionListener(l); }
+
+    public void setLogoutButtonText(String text) {
+        btnLogout.setText("🚪  " + text);
+    }
 
     public void addRegionListener(Consumer<String> l)          { regionListener = l; }
     public void addCategoryListener(Consumer<String> l)        { categoryListener = l; }

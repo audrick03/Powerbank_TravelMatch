@@ -797,6 +797,13 @@ public class HomeView extends JFrame {
         btnLogin.addActionListener(listener);
     }
 
+    public void setLoginButtonText(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException("Login button text is required");
+        }
+        btnLogin.setText(text);
+    }
+
     public void addSearchListener(ActionListener listener) {
         btnSearch.addActionListener(listener);
     }
