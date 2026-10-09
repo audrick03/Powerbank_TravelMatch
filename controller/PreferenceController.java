@@ -2,11 +2,13 @@ package controller;
 
 import model.PreferenceModel;
 import model.UserModel;
+import service.DestinationRecommendation;
 import service.PreferenceService;
+import view.RecommendationView;
 import view.HomeView;
 import view.PreferenceView;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class PreferenceController {
@@ -15,9 +17,15 @@ public class PreferenceController {
     private final PreferenceModel model;
     private final UserModel user;
     private final PreferenceService preferenceService;
+    private final Runnable onReturnHome;
 
     public PreferenceController(PreferenceView view, PreferenceModel model, UserModel user,
                                 PreferenceService preferenceService) {
+        this(view, model, user, preferenceService, null);
+    }
+
+    public PreferenceController(PreferenceView view, PreferenceModel model, UserModel user,
+                                PreferenceService preferenceService, Runnable onReturnHome) {
         if (view == null || model == null || user == null || preferenceService == null) {
             throw new IllegalArgumentException(
                     "Preference view, model, signed-in user, and service are required");
@@ -27,6 +35,7 @@ public class PreferenceController {
         this.model = model;
         this.user = user;
         this.preferenceService = preferenceService;
+        this.onReturnHome = onReturnHome;
 
         loadSavedPreferences();
         initializeListeners();
@@ -35,7 +44,7 @@ public class PreferenceController {
     private void initializeListeners() {
         view.addRecommendListener(e -> handleRecommend());
         view.addResetListener(e -> handleReset());
-        view.addForwardListener(e -> handleForward());
+        view.addForwardListener(e -> backToHome());
     }
 
     private void loadSavedPreferences() {
@@ -78,6 +87,14 @@ public class PreferenceController {
         model.setActivityLevel(activityLevel);
         model.setInterests(interests);
 
+        List<DestinationRecommendation> recommendations;
+        try {
+            recommendations = preferenceService.getRankedRecommendations(model);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            view.showError("Could not find destinations: " + exception.getMessage());
+            return;
+        }
+
         try {
             preferenceService.savePreferences(user, model);
         } catch (IllegalStateException exception) {
@@ -85,14 +102,14 @@ public class PreferenceController {
             return;
         }
 
-        String summary =
-                "Travel Preferences Saved!\n\n" +
-                "Budget: " + model.getBudget() + "\n" +
-                "Month: " + model.getMonth() + "\n" +
-                "Group Type: " + model.getGroupType() + "\n" +
-                "Activity Level: " + model.getActivityLevel() + "\n" +
-                "Interests: " + Arrays.toString(model.getInterests());
-        view.showMessage(summary);
+        view.showRecommendations(recommendations);
+        if (!recommendations.isEmpty()) {
+            RecommendationView recommendationView = new RecommendationView();
+            new RecommendationController(
+                    recommendationView, recommendations, onReturnHome);
+            view.dispose();
+            recommendationView.setVisible(true);
+        }
     }
 
     private void handleReset() {
@@ -108,36 +125,14 @@ public class PreferenceController {
     }
 
     private void backToHome() {
-        HomeView homeView = new HomeView();
-        HomeController homeController = new HomeController(homeView, null, user);
-        homeController.start();
         view.dispose();
-    }
-
-    private void handleForward() {
-        if (!hasCompletePreferences()) {
-            view.showError("Please fill in and save your preferences before proceeding.");
-            return;
+        if (onReturnHome != null) {
+            onReturnHome.run();
+        } else {
+            HomeView homeView = new HomeView();
+            HomeController homeController = new HomeController(homeView, null, user);
+            homeController.start();
         }
-
-        String summary =
-                "Proceeding with the following preferences:\n\n" +
-                "Budget: " + model.getBudget() + "\n" +
-                "Month: " + model.getMonth() + "\n" +
-                "Group Type: " + model.getGroupType() + "\n" +
-                "Activity Level: " + model.getActivityLevel() + "\n" +
-                "Interests: " + Arrays.toString(model.getInterests());
-        view.showMessage(summary);
-        backToHome();
-    }
-
-    private boolean hasCompletePreferences() {
-        return model.getBudget() != null && !model.getBudget().trim().isEmpty()
-                && model.getMonth() != null && !model.getMonth().trim().isEmpty()
-                && model.getGroupType() != null && !model.getGroupType().trim().isEmpty()
-                && model.getActivityLevel() != null
-                && !model.getActivityLevel().trim().isEmpty()
-                && model.getInterests() != null && model.getInterests().length > 0;
     }
 
     private void copyPreferences(PreferenceModel source) {

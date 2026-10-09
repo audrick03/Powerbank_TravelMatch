@@ -1,38 +1,45 @@
 package controller;
 
-import java.util.Optional;
-
 import model.*;
 import repository.*;
 import service.*;
 import view.*;
 
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.Optional;
 import java.util.function.Consumer;
 
-public class LoginController {
+public class LoginController implements UserLoginHandler {
 
     private final LoginView loginView;
     private final AuthenticationService authenticationService;
     private final Consumer<UserModel> onUserLoggedIn;
+    private final Runnable onBackToHome;
 
     public LoginController(LoginView loginView) {
-        this(loginView, new AuthenticationService(new UserRepository()), null);
+        this(loginView, new AuthenticationService(new UserRepository()), null, null);
     }
 
     public LoginController(LoginView loginView, UserRepository userRepository) {
-        this(loginView, new AuthenticationService(userRepository), null);
+        this(loginView, new AuthenticationService(userRepository), null, null);
     }
 
     public LoginController(LoginView loginView, AuthenticationService authenticationService) {
-        this(loginView, authenticationService, null);
+        this(loginView, authenticationService, null, null);
     }
 
     public LoginController(LoginView loginView, Consumer<UserModel> onUserLoggedIn) {
-        this(loginView, new AuthenticationService(new UserRepository()), onUserLoggedIn);
+        this(loginView, new AuthenticationService(new UserRepository()), onUserLoggedIn, null);
     }
 
     public LoginController(LoginView loginView, AuthenticationService authenticationService,
                            Consumer<UserModel> onUserLoggedIn) {
+        this(loginView, authenticationService, onUserLoggedIn, null);
+    }
+
+    public LoginController(LoginView loginView, AuthenticationService authenticationService,
+                           Consumer<UserModel> onUserLoggedIn, Runnable onBackToHome) {
         if (loginView == null || authenticationService == null) {
             throw new IllegalArgumentException("Login view and authentication service are required");
         }
@@ -40,14 +47,22 @@ public class LoginController {
         this.loginView = loginView;
         this.authenticationService = authenticationService;
         this.onUserLoggedIn = onUserLoggedIn;
+        this.onBackToHome = onBackToHome;
         loginView.addLoginListener(event -> login());
         loginView.addRegisterListener(event -> openRegisterView());
         loginView.addBackToHomeListener(event -> openHomeView());
+        loginView.setDefaultCloseOperation(LoginView.DO_NOTHING_ON_CLOSE);
+        loginView.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                openHomeView();
+            }
+        });
     }
 
     private void login() {
         Optional<UserModel> authenticatedUser =
-            authenticationService.authenticate(loginView.getUsername(), loginView.getPassword());
+                authenticationService.authenticate(loginView.getUsername(), loginView.getPassword());
 
         if (!authenticatedUser.isPresent()) {
             loginView.showError("Invalid username or password.");
@@ -56,9 +71,17 @@ public class LoginController {
 
         UserModel user = authenticatedUser.get();
         loginView.clearError();
-        if (user.isAdmin()) {
-            openAdminView();
-        } else if (onUserLoggedIn != null) {
+        user.dispatchLogin(this);
+    }
+
+    @Override
+    public void onAdministratorLogin(AdministratorUser user) {
+        openAdminView();
+    }
+
+    @Override
+    public void onTravelerLogin(TravelerUser user) {
+        if (onUserLoggedIn != null) {
             loginView.closeView();
             onUserLoggedIn.accept(user);
         } else {
@@ -89,9 +112,8 @@ public class LoginController {
                 preferenceView,
                 preferenceModel,
                 user,
-                new PreferenceService(
-                        new PreferenceRepository(),
-                        DestinationRepository.getInstance()));
+                new PreferenceService(new PreferenceRepository(), DestinationRepository.getInstance()),
+                this::openHomeView);
 
         loginView.closeView();
         preferenceController.showView();
@@ -99,7 +121,12 @@ public class LoginController {
 
     private void openAdminView() {
         AdminView adminView = new AdminView();
-        new AdminController(adminView);
+        if (onBackToHome == null) {
+            new AdminController(adminView);
+        } else {
+            loginView.closeView();
+            new AdminController(adminView, DestinationRepository.getInstance(), onBackToHome);
+        }
         adminView.setVisible(true);
     }
 
@@ -108,9 +135,13 @@ public class LoginController {
     }
 
     public void openHomeView() {
-        HomeView homeView = new HomeView();
-        new HomeController(homeView, loginView);
         loginView.closeView();
-        homeView.setVisible(true);
+        if (onBackToHome != null) {
+            onBackToHome.run();
+        } else {
+            HomeView homeView = new HomeView();
+            new HomeController(homeView, null);
+            homeView.setVisible(true);
+        }
     }
 }

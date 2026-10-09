@@ -1,141 +1,249 @@
 package view;
 
-import controller.*;
+import controller.AdminController;
+
 import javax.swing.*;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class AdminView extends JFrame {
-    private JTextField txtName, txtLocation, txtFee;
-    private JComboBox<String> cmbSeason, cmbCategory;
-    private JButton btnAdd, btnViewStats, btnLogout, btnClear;
+    private JTextField txtName;
+    private JTextField txtLocation;
+    private JTextField txtFee;
+    private JTextArea txtDescription;
+    private JTextArea txtTravelTips;
+    private JTextArea txtWhatToBring;
+    private JTextArea txtRecommendedPlaces;
+    private JComboBox<String> cmbStartMonth;
+    private JComboBox<String> cmbEndMonth;
+    private JComboBox<String> cmbDuration;
+    private JComboBox<String> cmbDifficulty;
+    private JComboBox<String> cmbRegion;
+    private JComboBox<String> cmbCategory;
+    private JButton btnAdd;
+    private JButton btnLogout;
+    private JButton btnClear;
 
     public AdminView() {
-        setTitle("TravelMatch - Admin Panel");
-        setSize(600, 600);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-
-        //Plain white background
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new GridBagLayout());
-        mainPanel.setBackground(Color.WHITE);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        //Title
-        JLabel lblTitle = new JLabel("TravelMatch Admin Dashboard", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("SansSerif", Font.BOLD, 24));
-        lblTitle.setForeground(new Color(0, 102, 51));
-        lblTitle.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, new Color(0, 128, 64)));
-
-        //Input fields
-        txtName = new JTextField();
-        txtLocation = new JTextField();
-        txtFee = new JTextField();
-
-        //Combo boxes
-        cmbSeason = new JComboBox<>(new String[]{"Summer", "Rainy", "Winter", "Spring"});
-        cmbCategory = new JComboBox<>(new String[]{"Beach", "Mountain", "City", "Cultural", "Adventure"});
-
-        //Buttons
-        btnAdd = createStyledButton("Add Destination");
-        btnViewStats = createStyledButton("View Statistics");
-        btnLogout = createStyledButton("Logout");
-        btnClear = createStyledButton("Clear Fields");
-
-        //Validation for fee
-        addNumberValidation(txtFee);
-
-        //Layout
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        mainPanel.add(lblTitle, gbc);
-
-        gbc.gridwidth = 1;
-        addField(mainPanel, gbc, "🌐 Destination Name:", txtName, 1);
-        addField(mainPanel, gbc, "🔑 Location:", txtLocation, 2);
-        addField(mainPanel, gbc, "☀️ Best Season:", cmbSeason, 3);
-        addField(mainPanel, gbc, "💰 Fee:", txtFee, 4);
-        addField(mainPanel, gbc, "🏖️ Category:", cmbCategory, 5);
-
-        gbc.gridx = 0; gbc.gridy = 6;
-        mainPanel.add(btnAdd, gbc);
-        gbc.gridx = 1;
-        mainPanel.add(btnViewStats, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 7;
-        mainPanel.add(btnClear, gbc);
-        gbc.gridx = 1;
-        mainPanel.add(btnLogout, gbc);
-
-        add(mainPanel);
+        super("TravelMatch - Admin Panel");
+        initializeView();
     }
 
-    //Helper to style buttons
+    private void initializeView() {
+        setSize(760, 760);
+        setMinimumSize(new Dimension(650, 600));
+        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        JPanel content = new JPanel(new BorderLayout(12, 12));
+        content.setBackground(Color.WHITE);
+        content.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+
+        JLabel title = new JLabel("TravelMatch Admin Dashboard", SwingConstants.CENTER);
+        title.setFont(new Font("SansSerif", Font.BOLD, 24));
+        title.setForeground(new Color(0, 102, 51));
+        title.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, new Color(0, 128, 64)));
+        content.add(title, BorderLayout.NORTH);
+
+        txtName = new JTextField(24);
+        txtLocation = new JTextField(24);
+        txtFee = new JTextField(24);
+        txtDescription = createTextArea(4);
+        txtTravelTips = createTextArea(4);
+        txtWhatToBring = createTextArea(4);
+        txtRecommendedPlaces = createTextArea(4);
+
+        String[] months = {
+                "--- Select Month ---", "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+        };
+        cmbStartMonth = new JComboBox<>(months);
+        cmbEndMonth = new JComboBox<>(months);
+        cmbDuration = new JComboBox<>(new String[]{
+                "--- Select Day ---","1 day", "2 days", "3 days", "4 days", "5 days",
+                "6 days", "7 days", "8 days", "9 days", "10 days"
+        });
+        cmbDifficulty = new JComboBox<>(new String[]{"--- Select Difficulty ---", "Easy", "Moderate", "Hard"});
+        cmbRegion = new JComboBox<>(new String[]{"--- Select Region ---", "Luzon", "Visayas", "Mindanao"});
+        cmbCategory = new JComboBox<>(new String[]{
+                "--- Select Category ---", "Beach", "Mountain", "City", "Cultural", "Adventure"
+        });
+
+        addNumberValidation(txtFee);
+
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(Color.WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(7, 8, 7, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        addField(form, gbc, "Destination Name:", txtName, 0);
+        addField(form, gbc, "Location / Province:", txtLocation, 1);
+        addField(form, gbc, "Description:", new JScrollPane(txtDescription), 2);
+        addField(form, gbc, "Region:", cmbRegion, 3);
+        addField(form, gbc, "Category:", cmbCategory, 4);
+        addField(form, gbc, "Fee per person:", txtFee, 5);
+        JPanel monthRange = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        monthRange.setOpaque(false);
+        monthRange.add(cmbStartMonth);
+        monthRange.add(new JLabel("-"));
+        monthRange.add(cmbEndMonth);
+        addField(form, gbc, "Best Time to Visit (Month range):", monthRange, 6);
+        addField(form, gbc, "Recommended Duration:", cmbDuration, 7);
+        addField(form, gbc, "Difficulty:", cmbDifficulty, 8);
+        addField(form, gbc, "Travel Tips (one per line):", new JScrollPane(txtTravelTips), 9);
+        addField(form, gbc, "What to Bring (one per line):", new JScrollPane(txtWhatToBring), 10);
+        addField(form, gbc,
+                "<html>Recommended Places:<br><small>One per line; use | before a description</small></html>",
+                new JScrollPane(txtRecommendedPlaces), 11);
+        gbc.gridx = 0;
+        gbc.gridy = 12;
+        gbc.gridwidth = 2;
+        gbc.weighty = 1;
+        form.add(Box.createVerticalGlue(), gbc);
+
+        content.add(new JScrollPane(form), BorderLayout.CENTER);
+
+        btnAdd = createStyledButton("Add Destination");
+        btnClear = createStyledButton("Clear Fields");
+        btnLogout = createStyledButton("Logout");
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 4));
+        buttons.setBackground(Color.WHITE);
+        buttons.add(btnLogout);
+        buttons.add(btnClear);
+        buttons.add(btnAdd);
+        content.add(buttons, BorderLayout.SOUTH);
+
+        setContentPane(content);
+    }
+
+    private JTextArea createTextArea(int rows) {
+        JTextArea textArea = new JTextArea(rows, 24);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        return textArea;
+    }
+
     private JButton createStyledButton(String text) {
         JButton button = new JButton(text);
-        button.setBackground(new Color(0, 153, 102));
+        button.setBackground(new Color(0, 92, 60));
         button.setForeground(Color.WHITE);
         button.setFont(new Font("SansSerif", Font.BOLD, 14));
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         button.setFocusPainted(false);
-        button.setBorder(BorderFactory.createLineBorder(new Color(0, 128, 64), 2, true));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0, 65, 42), 1, true),
+                BorderFactory.createEmptyBorder(8, 14, 8, 14)));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
         button.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { button.setBackground(new Color(0, 180, 90)); }
-            public void mouseExited(MouseEvent e) { button.setBackground(new Color(0, 153, 102)); }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(new Color(0, 112, 72));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(new Color(0, 92, 60));
+            }
         });
         return button;
     }
 
-    //Helper to add label + field
-    private void addField(JPanel panel, GridBagConstraints gbc, String label, JComponent field, int row) {
-        gbc.gridx = 0; gbc.gridy = row;
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        lbl.setForeground(new Color(0, 102, 51));
-        panel.add(lbl, gbc);
+    private void addField(JPanel panel, GridBagConstraints gbc, String label,
+                          JComponent field, int row) {
+        gbc.gridy = row;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
+        gbc.gridx = 0;
+        JLabel fieldLabel = new JLabel(label);
+        fieldLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        fieldLabel.setForeground(new Color(0, 102, 51));
+        panel.add(fieldLabel, gbc);
 
         gbc.gridx = 1;
+        gbc.weightx = 1;
         panel.add(field, gbc);
     }
 
-    //Validation: numbers only
     private void addNumberValidation(JTextField field) {
-        field.addKeyListener(new KeyAdapter() {
-            public void keyTyped(KeyEvent e) {
-                char c = e.getKeyChar();
-                if (!Character.isDigit(c) && c != KeyEvent.VK_BACK_SPACE) {
-                    e.consume();
-                    showMessage("Fee must be numeric!");
+        ((AbstractDocument) field.getDocument()).setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass bypass, int offset, String text,
+                                     AttributeSet attributes) throws BadLocationException {
+                if (text != null && text.matches("\\d*")) {
+                    super.insertString(bypass, offset, text, attributes);
+                }
+            }
+
+            @Override
+            public void replace(FilterBypass bypass, int offset, int length, String text,
+                                AttributeSet attributes) throws BadLocationException {
+                if (text != null && text.matches("\\d*")) {
+                    super.replace(bypass, offset, length, text, attributes);
                 }
             }
         });
     }
 
-    // Clear fields
     public void clearFields() {
         txtName.setText("");
         txtLocation.setText("");
+        txtDescription.setText("");
+        txtTravelTips.setText("");
+        txtWhatToBring.setText("");
+        txtRecommendedPlaces.setText("");
         txtFee.setText("");
-        cmbSeason.setSelectedIndex(0);
+        cmbStartMonth.setSelectedIndex(0);
+        cmbEndMonth.setSelectedIndex(0);
+        cmbDuration.setSelectedIndex(0);
+        cmbDifficulty.setSelectedIndex(0);
+        cmbRegion.setSelectedIndex(0);
         cmbCategory.setSelectedIndex(0);
     }
 
-    // 🧩 Getters
     public String getDestinationName() { return txtName.getText(); }
     public String getDestinationLocation() { return txtLocation.getText(); }
-    public String getBestSeason() { return (String) cmbSeason.getSelectedItem(); }
+    public String getDescription() { return txtDescription.getText(); }
+    public String getBestSeason() {
+        return cmbStartMonth.getSelectedItem() + " - " + cmbEndMonth.getSelectedItem();
+    }
+    public String getDuration() { return (String) cmbDuration.getSelectedItem(); }
+    public String getDifficulty() { return (String) cmbDifficulty.getSelectedItem(); }
+    public String getTravelTips() { return txtTravelTips.getText(); }
+    public String getWhatToBring() { return txtWhatToBring.getText(); }
+    public String getRecommendedPlaces() { return txtRecommendedPlaces.getText(); }
+    public String getRegion() { return (String) cmbRegion.getSelectedItem(); }
     public String getFee() { return txtFee.getText(); }
     public String getCategory() { return (String) cmbCategory.getSelectedItem(); }
+    public boolean hasSelectedChoices() {
+        return cmbStartMonth.getSelectedIndex() > 0
+                && cmbEndMonth.getSelectedIndex() > 0
+                && cmbDuration.getSelectedIndex() > 0
+                && cmbDifficulty.getSelectedIndex() > 0
+                && cmbRegion.getSelectedIndex() > 0
+                && cmbCategory.getSelectedIndex() > 0;
+    }
 
-    // 🧩 Listeners
-    public void addDestinationListener(ActionListener listener) { btnAdd.addActionListener(listener); }
-    public void viewStatsListener(ActionListener listener) { btnViewStats.addActionListener(listener); }
-    public void logoutListener(ActionListener listener) { btnLogout.addActionListener(listener); }
-    public void clearListener(ActionListener listener) { btnClear.addActionListener(listener); }
+    public void addDestinationListener(ActionListener listener) {
+        btnAdd.addActionListener(listener);
+    }
+
+    public void logoutListener(ActionListener listener) {
+        btnLogout.addActionListener(listener);
+    }
+
+    public void clearListener(ActionListener listener) {
+        btnClear.addActionListener(listener);
+    }
 
     public void showMessage(String message) {
         JOptionPane.showMessageDialog(this, message);

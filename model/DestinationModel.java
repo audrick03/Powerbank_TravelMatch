@@ -23,6 +23,8 @@ public class DestinationModel {
     private String duration;
     private String difficulty;
     private String budget;
+    private final List<String> travelTips = new ArrayList<>();
+    private final List<String> whatToBring = new ArrayList<>();
     private final List<String> activities = new ArrayList<>();
     private final List<String> places = new ArrayList<>();   // "Name | short description"
     // Optional per-category activity lists (e.g. Davao City is both City and Cultural)
@@ -47,6 +49,8 @@ public class DestinationModel {
     public String getDuration()    { return duration; }
     public String getDifficulty()  { return difficulty; }
     public String getBudget()      { return budget; }
+    public List<String> getTravelTips() { return Collections.unmodifiableList(travelTips); }
+    public List<String> getWhatToBring() { return Collections.unmodifiableList(whatToBring); }
 
     public List<String> getCategories() { return Collections.unmodifiableList(categories); }
     public List<String> getActivities() { return Collections.unmodifiableList(activities); }
@@ -75,6 +79,20 @@ public class DestinationModel {
         this.duration = duration;
         this.difficulty = difficulty;
         this.budget = budget;
+    }
+
+    public void setTravelTips(List<String> tips) {
+        travelTips.clear();
+        if (tips != null) {
+            travelTips.addAll(tips);
+        }
+    }
+
+    public void setWhatToBring(List<String> items) {
+        whatToBring.clear();
+        if (items != null) {
+            whatToBring.addAll(items);
+        }
     }
 
     public void setCategories(List<String> list) {

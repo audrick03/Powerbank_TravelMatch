@@ -3,6 +3,8 @@ package view;
 import controller.*;
 import model.*;
 import repository.*;
+import service.DestinationRecommendation;
+import service.PreferenceService;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -120,17 +122,49 @@ public class RecommendationView extends JFrame {
 
     /** Destination cards (every region and category). 'selected' may be null. */
     public void showDestinations(List<DestinationModel> list, DestinationModel selected) {
+        lblDestTitle.setText("Destinations");
+        lblDestSub.setText("Explore the best destinations across the Philippines.");
+        showDestinationCards(list, selected, null);
+    }
+
+    /** Personalized destination cards, ordered by preference compatibility. */
+    public void showRecommendations(List<DestinationRecommendation> recommendations,
+                                    DestinationModel selected) {
+        if (recommendations == null) {
+            throw new IllegalArgumentException("Recommendations are required");
+        }
+        lblDestTitle.setText("Your Top 10 Recommendations");
+        lblDestSub.setText("Ranked for your saved travel preferences.");
+        List<DestinationRecommendation> topRecommendations = recommendations.subList(
+                0, Math.min(recommendations.size(), PreferenceService.MAX_RECOMMENDATIONS));
+        List<DestinationModel> destinations = new java.util.ArrayList<>();
+        for (DestinationRecommendation recommendation : topRecommendations) {
+            destinations.add(recommendation.getDestination());
+        }
+        showDestinationCards(destinations, selected, topRecommendations);
+    }
+
+    private void showDestinationCards(List<DestinationModel> list, DestinationModel selected,
+                                      List<DestinationRecommendation> recommendations) {
         destGrid.removeAll();
         if (list.isEmpty()) {
             destGrid.setLayout(new GridLayout(0, 1));
-            destGrid.add(label("No destinations found yet.", 15, false, TEXT_MUTED));
+            String emptyMessage = recommendations == null
+                    ? "No destinations found yet."
+                    : "No destinations matched your preferences.";
+            destGrid.add(label(emptyMessage, 15, false, TEXT_MUTED));
         } else {
             destGrid.setLayout(new GridLayout(0, 5, 14, 14));
-            for (DestinationModel d : list) {
-                destGrid.add(createDestinationCard(d, null, d == selected));
+            int visibleCount = Math.min(list.size(), PreferenceService.MAX_RECOMMENDATIONS);
+            for (int index = 0; index < visibleCount; index++) {
+                DestinationModel destination = list.get(index);
+                String match = recommendations == null ? null
+                        : recommendations.get(index).getMatchPercentage() + "% match";
+                destGrid.add(createDestinationCard(
+                        destination, null, destination == selected, match));
             }
             // keep card width constant when a row is not full
-            int missing = (5 - list.size() % 5) % 5;
+            int missing = (5 - visibleCount % 5) % 5;
             for (int i = 0; i < missing; i++) {
                 JPanel blank = new JPanel();
                 blank.setOpaque(false);
@@ -320,7 +354,8 @@ public class RecommendationView extends JFrame {
     // CARDS
     // =========================================================
 
-    private SelectableCard createDestinationCard(DestinationModel d, String category, boolean selected) {
+    private SelectableCard createDestinationCard(DestinationModel d, String category,
+                                                 boolean selected, String match) {
         SelectableCard card = new SelectableCard(new BorderLayout(0, 8), 6);
 
         String firstCat = d.getCategories().get(0);
@@ -340,6 +375,10 @@ public class RecommendationView extends JFrame {
         top.add(left(nameRow));
         top.add(Box.createVerticalStrut(3));
         top.add(left(label("" + d.getProvince(), 12, false, TEXT_MUTED)));
+        if (match != null) {
+            top.add(Box.createVerticalStrut(4));
+            top.add(left(createBadge(match, false)));
+        }
         top.add(Box.createVerticalStrut(6));
         top.add(left(text(d.getDescription(), 190, 12, TEXT_DARK, false)));
 

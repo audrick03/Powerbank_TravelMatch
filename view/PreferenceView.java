@@ -1,10 +1,13 @@
 package view;
 
 import model.PreferenceModel;
+import service.DestinationRecommendation;
+import service.PreferenceService;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.util.List;
 
 /**
  * PreferenceView - collects traveler preferences for destination recommendations.
@@ -276,6 +279,29 @@ public class PreferenceView extends JFrame {
         foodInterest.setSelected(false);
 
         clearMessage();
+    }
+
+    public void showRecommendations(List<DestinationRecommendation> recommendations) {
+        if (recommendations == null || recommendations.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No destinations matched your preferences.");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Top 10 recommended destinations:\n\n");
+        int visibleCount = Math.min(
+                recommendations.size(), PreferenceService.MAX_RECOMMENDATIONS);
+        for (int index = 0; index < visibleCount; index++) {
+            DestinationRecommendation recommendation = recommendations.get(index);
+            sb.append(index + 1)
+                    .append(". ")
+                    .append(recommendation.getDestination().getName())
+                    .append(" — ")
+                    .append(recommendation.getMatchPercentage())
+                    .append("% match\n");
+        }
+        JOptionPane.showMessageDialog(this, sb.toString(), "Travel Recommendations",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     public void showMessage(String message) {

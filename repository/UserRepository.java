@@ -67,7 +67,7 @@ public class UserRepository {
                     return Optional.empty();
                 }
 
-                return Optional.of(new UserModel(
+                return Optional.of(createUser(
                         result.getString("username"),
                         Role.valueOf(result.getString("role"))));
             }
@@ -82,7 +82,7 @@ public class UserRepository {
                     "Password must be at least " + MINIMUM_PASSWORD_LENGTH + " characters");
         }
 
-        UserModel user = new UserModel(username, Role.NORMAL_USER);
+        UserModel user = new TravelerUser(username);
         String usernameKey = normalizeUsername(user.getUsername());
         byte[] salt = new byte[SALT_LENGTH_BYTES];
         SECURE_RANDOM.nextBytes(salt);
@@ -163,6 +163,17 @@ public class UserRepository {
 
     private String normalizeUsername(String username) {
         return username.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private UserModel createUser(String username, Role role) {
+        switch (role) {
+            case ADMIN:
+                return new AdministratorUser(username);
+            case NORMAL_USER:
+                return new TravelerUser(username);
+            default:
+                throw new IllegalStateException("Unsupported user role: " + role);
+        }
     }
 
     private byte[] hashPassword(String password, byte[] salt) {

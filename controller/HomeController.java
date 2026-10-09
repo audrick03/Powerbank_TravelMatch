@@ -8,6 +8,7 @@ import view.*;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Home flow:
@@ -28,6 +29,7 @@ public class HomeController {
     private LoginController loginController;
     private UserModel currentUser;
     private boolean openPreferencesAfterLogin;
+    private boolean openRecommendationsAfterLogin;
 
     // Current selections
     private Level level = Level.HOME;
@@ -238,6 +240,12 @@ public class HomeController {
         homeView.setLoginButtonText("Logout");
         showHome();
 
+        if (openRecommendationsAfterLogin) {
+            openRecommendationsAfterLogin = false;
+            showRecommendations();
+            return;
+        }
+
         if (openPreferencesAfterLogin) {
             openPreferencesAfterLogin = false;
             confirmPreferenceChange();
@@ -247,6 +255,7 @@ public class HomeController {
     private void logout() {
         currentUser = null;
         openPreferencesAfterLogin = false;
+        openRecommendationsAfterLogin = false;
         homeView.setLoginButtonText("Login");
         showHome();
     }
@@ -254,6 +263,7 @@ public class HomeController {
     private void showPreferences() {
         if (currentUser == null) {
             openPreferencesAfterLogin = true;
+            openRecommendationsAfterLogin = false;
             showLogin();
             return;
         }
@@ -281,16 +291,62 @@ public class HomeController {
                 currentUser,
                 new PreferenceService(
                         new PreferenceRepository(),
-                        repository));
+                        repository),
+                this::showHome);
         homeView.setVisible(false);
         preferenceController.showView();
     }
 
-    // Recommendations button: flat list window (reads from the repository)
+    // Recommendations are personalized and require saved preferences.
     private void showRecommendations() {
+        if (currentUser == null) {
+            openRecommendationsAfterLogin = true;
+            openPreferencesAfterLogin = false;
+            showLogin();
+            return;
+        }
+
+        PreferenceService preferenceService = new PreferenceService(
+                new PreferenceRepository(), repository);
+        Optional<PreferenceModel> savedPreferences;
+        try {
+            savedPreferences = preferenceService.loadPreferences(currentUser);
+        } catch (IllegalStateException exception) {
+            JOptionPane.showMessageDialog(
+                    homeView,
+                    "Could not load your saved preferences: " + exception.getMessage(),
+                    "Recommendations",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!savedPreferences.isPresent()) {
+            JOptionPane.showMessageDialog(
+                    homeView,
+                    "Please complete your travel preferences to see personalized recommendations.",
+                    "Travel Preferences Required",
+                    JOptionPane.INFORMATION_MESSAGE);
+            openPreferenceView();
+            return;
+        }
+
+        List<DestinationRecommendation> recommendations;
+        try {
+            recommendations = preferenceService.getRankedRecommendations(
+                    savedPreferences.get());
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            JOptionPane.showMessageDialog(
+                    homeView,
+                    "Could not find destinations: " + exception.getMessage(),
+                    "Recommendations",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         RecommendationView view = new RecommendationView();
         view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-        new RecommendationController(view);
+        new RecommendationController(view, recommendations, this::showHome);
+        homeView.setVisible(false);
         view.setVisible(true);
     }
 

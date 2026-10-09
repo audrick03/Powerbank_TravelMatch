@@ -1,67 +1,133 @@
 package controller;
 
-import view.*;
+import model.DestinationModel;
+import repository.DestinationRepository;
+import view.AdminView;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AdminController {
-    private AdminView adminView;
+    private final AdminView adminView;
+    private final DestinationRepository destinationRepository;
+    private final Runnable onClose;
 
     public AdminController(AdminView adminView) {
-        this.adminView = adminView;
-        this.adminView.addDestinationListener(new AddDestinationListener());
-        this.adminView.viewStatsListener(new ViewStatsListener());
-        this.adminView.logoutListener(new LogoutListener());
-        this.adminView.clearListener(new ClearListener());
+        this(adminView, DestinationRepository.getInstance(), null);
     }
 
-    // ➕ Add Destination
+    public AdminController(AdminView adminView, DestinationRepository destinationRepository) {
+        this(adminView, destinationRepository, null);
+    }
+
+    public AdminController(AdminView adminView, DestinationRepository destinationRepository,
+                           Runnable onClose) {
+        if (adminView == null || destinationRepository == null) {
+            throw new IllegalArgumentException("Admin view and destination repository are required");
+        }
+        this.adminView = adminView;
+        this.destinationRepository = destinationRepository;
+        this.onClose = onClose;
+        this.adminView.addDestinationListener(new AddDestinationListener());
+        this.adminView.logoutListener(new LogoutListener());
+        this.adminView.clearListener(new ClearListener());
+        this.adminView.setDefaultCloseOperation(AdminView.DO_NOTHING_ON_CLOSE);
+        this.adminView.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                closeAdminView();
+            }
+        });
+    }
+
     class AddDestinationListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             String name = adminView.getDestinationName();
             String location = adminView.getDestinationLocation();
+            String region = adminView.getRegion();
             String season = adminView.getBestSeason();
+            String duration = adminView.getDuration();
+            String difficulty = adminView.getDifficulty();
             String fee = adminView.getFee();
             String category = adminView.getCategory();
+            String description = adminView.getDescription();
+            List<String> travelTips = parseItems(adminView.getTravelTips());
+            List<String> whatToBring = parseItems(adminView.getWhatToBring());
+            List<String> recommendedPlaces = parseItems(adminView.getRecommendedPlaces());
 
-            // Basic validation before saving
-            if (name.isEmpty() || location.isEmpty() || season.isEmpty() || fee.isEmpty() || category.isEmpty()) {
+            if (name.trim().isEmpty() || location.trim().isEmpty()
+                    || description.trim().isEmpty() || !adminView.hasSelectedChoices()
+                    || region == null || season == null || duration == null || difficulty == null
+                    || fee.trim().isEmpty() || category == null || travelTips.isEmpty()
+                    || whatToBring.isEmpty() || recommendedPlaces.isEmpty()) {
                 adminView.showMessage("⚠️ Please fill in all fields before adding a destination.");
                 return;
             }
 
-            // Simulate saving to database
-            System.out.println("Destination added:");
-            System.out.println("Name: " + name);
-            System.out.println("Location: " + location);
-            System.out.println("Best Season: " + season);
-            System.out.println("Fee: " + fee);
-            System.out.println("Category: " + category);
+            long feeAmount;
+            try {
+                feeAmount = Long.parseLong(fee);
+            } catch (NumberFormatException exception) {
+                adminView.showMessage("Fee must be a valid whole-number amount.");
+                return;
+            }
+            if (feeAmount <= 0) {
+                adminView.showMessage("Fee must be greater than zero.");
+                return;
+            }
 
-            adminView.showMessage("✅ Destination added successfully!");
+            DestinationModel destination = new DestinationModel(
+                    name.trim(),
+                    location.trim(),
+                    region,
+                    java.util.Collections.singletonList(category),
+                    description.trim());
+            destination.setTravelInfo(season, duration, difficulty,
+                    "₱" + feeAmount + " per person");
+            destination.setTravelTips(travelTips);
+            destination.setWhatToBring(whatToBring);
+            destination.setPlaces(recommendedPlaces);
+            if (!destinationRepository.add(destination)) {
+                adminView.showMessage("A destination with that name already exists.");
+                return;
+            }
+
+            adminView.showMessage("Destination added for this session.");
+            adminView.clearFields();
         }
     }
 
-    // 📊 View Statistics
-    class ViewStatsListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            // Simulate viewing statistics
-            adminView.showMessage("📊 Most searched destinations:\n1. Palawan\n2. Baguio\n3. Siargao");
+    private static List<String> parseItems(String text) {
+        List<String> items = new ArrayList<>();
+        for (String line : text.split("\\R")) {
+            String item = line.trim();
+            if (!item.isEmpty()) {
+                items.add(item);
+            }
         }
+        return items;
     }
 
-    // 🚪 Logout
     class LogoutListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             adminView.showMessage("👋 Logged out successfully!");
-            adminView.dispose();
+            closeAdminView();
         }
     }
 
-    // 🧹 Clear Fields
+    private void closeAdminView() {
+        adminView.dispose();
+        if (onClose != null) {
+            onClose.run();
+        }
+    }
+
     class ClearListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {

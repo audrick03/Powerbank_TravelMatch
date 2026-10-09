@@ -11,34 +11,45 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class PreferenceService {
 
-    private static final Pattern PRICE_PATTERN =
-            Pattern.compile("\\d[\\d,]*(?:\\.\\d+)?");
-    private static final List<String> MONTHS = Arrays.asList(
-            "january", "february", "march", "april", "may", "june",
-            "july", "august", "september", "october", "november", "december");
+    public static final int MAX_RECOMMENDATIONS = 10;
+
+    private static final List<CompatibilityRule> DEFAULT_RULES = List.of(
+            new BudgetCompatibilityRule(),
+            new SeasonCompatibilityRule(),
+            new ActivityCompatibilityRule(),
+            new InterestCompatibilityRule());
 
     private final PreferenceRepository preferenceRepository;
     private final DestinationRepository destinationRepository;
+    private final List<CompatibilityRule> compatibilityRules;
 
     public PreferenceService(PreferenceRepository preferenceRepository) {
-        this(preferenceRepository, DestinationRepository.getInstance());
+        this(preferenceRepository, DestinationRepository.getInstance(), DEFAULT_RULES);
     }
 
     public PreferenceService(PreferenceRepository preferenceRepository,
-                            DestinationRepository destinationRepository) {
-        if (preferenceRepository == null || destinationRepository == null) {
-            throw new IllegalArgumentException("Preference and destination repositories are required");
+                             DestinationRepository destinationRepository) {
+        this(preferenceRepository, destinationRepository, DEFAULT_RULES);
+    }
+
+    public PreferenceService(PreferenceRepository preferenceRepository,
+                             DestinationRepository destinationRepository,
+                             List<CompatibilityRule> compatibilityRules) {
+        if (preferenceRepository == null || destinationRepository == null
+                || compatibilityRules == null || compatibilityRules.isEmpty()
+                || compatibilityRules.stream().anyMatch(rule -> rule == null)) {
+            throw new IllegalArgumentException(
+                    "Repositories and at least one compatibility rule are required");
         }
 
         this.preferenceRepository = preferenceRepository;
         this.destinationRepository = destinationRepository;
+        this.compatibilityRules = Collections.unmodifiableList(
+                new ArrayList<>(compatibilityRules));
     }
 
     public void savePreferences(UserModel user, PreferenceModel preferences) {
@@ -53,38 +64,68 @@ public class PreferenceService {
     }
 
     public List<DestinationModel> getRecommendedDestinations(PreferenceModel preferences) {
+        List<DestinationModel> destinations = new ArrayList<>();
+        for (DestinationRecommendation recommendation : getRankedRecommendations(preferences)) {
+            destinations.add(recommendation.getDestination());
+        }
+        return Collections.unmodifiableList(destinations);
+    }
+
+    public List<DestinationRecommendation> getRankedRecommendations(PreferenceModel preferences) {
         validatePreferences(preferences);
 
-        double budgetCap = budgetCap(preferences.getBudget());
-        List<ScoredDestination> scoredDestinations = new ArrayList<>();
-        for (DestinationModel destination : destinationRepository.getAll()) {
-            double destinationMaximum = maximumBudget(destination);
-            if (destinationMaximum > budgetCap) {
-                continue;
-            }
+        List<DestinationRecommendation> scoredDestinations = new ArrayList<>();
+        double totalWeight = compatibilityRules.stream()
+                .mapToDouble(CompatibilityRule::getWeight)
+                .sum();
+        if (!Double.isFinite(totalWeight) || totalWeight <= 0.0
+                || compatibilityRules.stream().anyMatch(rule ->
+                        !Double.isFinite(rule.getWeight()) || rule.getWeight() <= 0.0)) {
+            throw new IllegalStateException("Compatibility rule weights must be positive and finite");
+        }
 
-            double compatibility =
-                    (budgetCompatibility(destinationMaximum, budgetCap)
-                            + monthCompatibility(preferences.getMonth(), destination.getBestTime())
-                            + activityCompatibility(
-                                    preferences.getActivityLevel(), destination.getDifficulty())
-                            + interestCompatibility(preferences.getInterests(), destination))
-                            / 4.0;
-            scoredDestinations.add(new ScoredDestination(destination, compatibility));
+        for (DestinationModel destination : destinationRepository.getAll()) {
+            boolean eligible = true;
+            double weightedScore = 0.0;
+            java.util.Map<String, Double> componentScores = new java.util.LinkedHashMap<>();
+            for (CompatibilityRule rule : compatibilityRules) {
+                if (!rule.isEligible(preferences, destination)) {
+                    eligible = false;
+                    break;
+                }
+                double score = rule.score(preferences, destination);
+                if (!Double.isFinite(score) || score < 0.0 || score > 1.0) {
+                    throw new IllegalStateException(
+                            "Compatibility rule scores must be between 0.0 and 1.0");
+                }
+                String ruleName = rule.getName();
+                if (ruleName == null || ruleName.trim().isEmpty()
+                        || componentScores.containsKey(ruleName)) {
+                    throw new IllegalStateException(
+                            "Compatibility rule names must be non-empty and unique");
+                }
+                componentScores.put(ruleName, score);
+                weightedScore += score * rule.getWeight();
+            }
+            if (eligible) {
+                scoredDestinations.add(new DestinationRecommendation(
+                        destination, weightedScore / totalWeight, componentScores));
+            }
         }
 
         scoredDestinations.sort(
-                Comparator.comparingDouble(ScoredDestination::getCompatibility).reversed()
+                Comparator.comparingDouble(DestinationRecommendation::getCompatibilityScore).reversed()
                         .thenComparing(
                                 Comparator.comparingDouble(
-                                        (ScoredDestination scored) -> scored.destination.getScore())
+                                        (DestinationRecommendation scored) ->
+                                                scored.getDestination().getScore())
                                         .reversed()));
 
-        List<DestinationModel> results = new ArrayList<>(scoredDestinations.size());
-        for (ScoredDestination scored : scoredDestinations) {
-            results.add(scored.destination);
+        if (scoredDestinations.size() > MAX_RECOMMENDATIONS) {
+            scoredDestinations = new ArrayList<>(
+                    scoredDestinations.subList(0, MAX_RECOMMENDATIONS));
         }
-        return Collections.unmodifiableList(results);
+        return Collections.unmodifiableList(scoredDestinations);
     }
 
     private void requireUser(UserModel user) {
@@ -112,173 +153,5 @@ public class PreferenceService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
-    }
-
-    private double budgetCap(String budget) {
-        if (budget == null) {
-            throw new IllegalArgumentException("Budget is required");
-        }
-        String normalized = budget.trim().toLowerCase(Locale.ROOT);
-        if (normalized.startsWith("low budget")) {
-            return 3500.0;
-        }
-        if (normalized.startsWith("medium budget")) {
-            return 8000.0;
-        }
-        if (normalized.startsWith("high budget")) {
-            return Double.POSITIVE_INFINITY;
-        }
-        throw new IllegalArgumentException("Unsupported budget preference: " + budget);
-    }
-
-    private double maximumBudget(DestinationModel destination) {
-        String budget = destination.getBudget();
-        Matcher matcher = PRICE_PATTERN.matcher(budget == null ? "" : budget);
-        double maximum = -1.0;
-        while (matcher.find()) {
-            maximum = Double.parseDouble(matcher.group().replace(",", ""));
-        }
-        if (maximum < 0.0) {
-            throw new IllegalStateException(
-                    "Destination has an unrecognized budget: " + destination.getName());
-        }
-        return maximum;
-    }
-
-    private double budgetCompatibility(double destinationMaximum, double budgetCap) {
-        if (Double.isInfinite(budgetCap)) {
-            return 1.0;
-        }
-        return 1.0 - destinationMaximum / budgetCap;
-    }
-
-    private double monthCompatibility(String preferredMonth, String bestTime) {
-        if (preferredMonth == null || bestTime == null) {
-            return 0.0;
-        }
-        String normalizedBestTime = bestTime.toLowerCase(Locale.ROOT);
-        if (normalizedBestTime.contains("year-round")) {
-            return 1.0;
-        }
-
-        String normalizedMonth = preferredMonth.trim().toLowerCase(Locale.ROOT);
-        int monthIndex = MONTHS.indexOf(normalizedMonth);
-        if (monthIndex < 0) {
-            throw new IllegalArgumentException("Unsupported month preference: " + preferredMonth);
-        }
-        String abbreviation = normalizedMonth.substring(0, 3);
-        for (String token : normalizedBestTime.split("[^a-z]+")) {
-            if (token.equals(normalizedMonth) || token.equals(abbreviation)) {
-                return 1.0;
-            }
-        }
-        return 0.0;
-    }
-
-    private double activityCompatibility(String activityLevel, String difficulty) {
-        double preferredDifficulty = difficultyValue(activityLevel, true);
-        double destinationDifficulty = difficultyValue(difficulty, false);
-        return 1.0 - Math.abs(preferredDifficulty - destinationDifficulty) / 2.0;
-    }
-
-    private double difficultyValue(String value, boolean preference) {
-        if (value == null) {
-            throw new IllegalArgumentException(
-                    preference ? "Activity level is required" : "Destination difficulty is required");
-        }
-        String normalized = value.toLowerCase(Locale.ROOT);
-        if (preference) {
-            if (normalized.startsWith("low")) {
-                return 0.0;
-            }
-            if (normalized.startsWith("medium")) {
-                return 1.0;
-            }
-            if (normalized.startsWith("hard")) {
-                return 2.0;
-            }
-            throw new IllegalArgumentException("Unsupported activity level: " + value);
-        }
-        if (normalized.contains("easy") && normalized.contains("moderate")) {
-            return 0.5;
-        }
-        if (normalized.contains("moderate") && (normalized.contains("hard")
-                || normalized.contains("difficult"))) {
-            return 1.5;
-        }
-        if (normalized.contains("easy")) {
-            return 0.0;
-        }
-        if (normalized.contains("moderate")) {
-            return 1.0;
-        }
-        if (normalized.contains("hard") || normalized.contains("difficult")) {
-            return 2.0;
-        }
-        throw new IllegalStateException("Unrecognized destination difficulty: " + value);
-    }
-
-    private double interestCompatibility(String[] interests, DestinationModel destination) {
-        if (interests == null || interests.length == 0) {
-            return 0.0;
-        }
-
-        int matched = 0;
-        for (String interest : interests) {
-            if (interestMatches(interest, destination)) {
-                matched++;
-            }
-        }
-        return (double) matched / interests.length;
-    }
-
-    private boolean interestMatches(String interest, DestinationModel destination) {
-        if (interest == null) {
-            return false;
-        }
-        String normalizedInterest = interest.trim().toLowerCase(Locale.ROOT);
-        String activities = String.join(" ", destination.getActivities()).toLowerCase(Locale.ROOT);
-        switch (normalizedInterest) {
-            case "beach":
-                return destination.hasCategory(DestinationRepository.BEACH)
-                        || containsAny(activities, "beach", "island", "snorkel", "swimming");
-            case "adventure":
-                return destination.hasCategory(DestinationRepository.ADVENTURE)
-                        || containsAny(activities, "adventure", "hiking", "trek", "surf", "off-road");
-            case "nature":
-                return destination.hasCategory(DestinationRepository.MOUNTAIN)
-                        || containsAny(
-                                activities, "nature", "waterfall", "wildlife", "bird", "landscape");
-            case "culture":
-                return destination.hasCategory(DestinationRepository.CULTURAL)
-                        || containsAny(activities, "cultural", "heritage", "museum", "church");
-            case "food":
-                return containsAny(activities, "food", "restaurant", "culinary", "tasting", "cuisine");
-            default:
-                return false;
-        }
-    }
-
-    private boolean containsAny(String value, String... candidates) {
-        for (String candidate : candidates) {
-            if (value.contains(candidate)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static final class ScoredDestination {
-        private final DestinationModel destination;
-        private final double compatibility;
-
-        private ScoredDestination(DestinationModel destination, double compatibility) {
-            this.destination = destination;
-            this.compatibility = compatibility;
-        }
-
-        private double getCompatibility() {
-            return compatibility;
-        }
     }
 }

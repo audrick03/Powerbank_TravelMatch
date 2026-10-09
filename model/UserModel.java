@@ -1,6 +1,6 @@
 package model;
 
-public class UserModel {
+public abstract class UserModel {
 
     public enum Role {
         NORMAL_USER,
@@ -8,29 +8,19 @@ public class UserModel {
     }
 
     private final String username;
-    private final Role role;
 
-    public UserModel(String username, Role role) {
+    protected UserModel(String username) {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username cannot be blank");
         }
-        if (role == null) {
-            throw new IllegalArgumentException("Role cannot be null");
-        }
-
         this.username = username.trim();
-        this.role = role;
     }
 
     public String getUsername() {
         return username;
     }
 
-    public Role getRole() {
-        return role;
-    }
+    public abstract Role getRole();
 
-    public boolean isAdmin() {
-        return role == Role.ADMIN;
-    }
+    public abstract void dispatchLogin(UserLoginHandler handler);
 }
