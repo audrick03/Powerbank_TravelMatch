@@ -10,6 +10,8 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
@@ -27,6 +29,8 @@ import java.util.function.Consumer;
  * It only displays what the controller gives it.
  */
 public class ExplorePanel extends JPanel {
+
+    private final ReviewRepository reviewRepository = new ReviewRepository();
 
     private static final String FONT = "Segoe UI";
     private static final String SYMBOLS = "[^A-Za-z0-9 _-]";
@@ -57,13 +61,13 @@ public class ExplorePanel extends JPanel {
     // categories page
     private final JLabel lblCatTitle = new JLabel();
     private final JLabel lblCatSub = new JLabel();
-    private final JPanel catGrid = new JPanel(new GridLayout(0, 3, 22, 22));
+    private final JPanel catGrid =new JPanel();
     private JScrollPane catScroll;
 
     // destination list page
     private final JLabel lblListTitle = new JLabel();
     private final JLabel lblListSub = new JLabel();
-    private final JPanel listGrid = new JPanel(new GridLayout(0, 3, 22, 22));
+    private final JPanel listGrid =new JPanel();
     private JScrollPane listScroll;
 
     // detail page (the Review button lives in its header, so it only shows here)
@@ -97,7 +101,7 @@ public class ExplorePanel extends JPanel {
 
         reviewContent.setLayout(new BoxLayout(reviewContent, BoxLayout.Y_AXIS));
         reviewContent.setBackground(BACKGROUND);
-        JPanel reviewWrap = new JPanel(new BorderLayout());
+        JPanel reviewWrap = new ViewportWidthPanel(new BorderLayout());
         reviewWrap.setBackground(BACKGROUND);
         reviewWrap.add(reviewContent, BorderLayout.NORTH);
         reviewScroll = wrap(reviewWrap);
@@ -107,6 +111,12 @@ public class ExplorePanel extends JPanel {
         pages.add(detailScroll, PAGE_DETAIL);
         pages.add(reviewScroll, PAGE_REVIEW);
         add(pages, BorderLayout.CENTER);
+        addComponentListener(new ComponentAdapter() {
+        @Override
+        public void componentResized(ComponentEvent e) {
+        updateResponsiveLayout();
+        }
+        });
     }
 
     // =========================================================
@@ -177,7 +187,21 @@ public class ExplorePanel extends JPanel {
         // score + description
         JPanel scoreRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         scoreRow.setOpaque(false);
-        scoreRow.add(createRatingBadge("User Reviews: " + d.getScore() + "/5"));
+        double rating = reviewRepository.getAverageRating(d.getName());
+        int reviewCount = reviewRepository.getReviewCount(d.getName());
+        String ratingText;
+        if(reviewCount == 0){
+
+            ratingText = "User Reviews: 0/5";
+        }else{
+            ratingText = String.format("User Reviews: %.1f/%d", rating, reviewCount);
+        }
+        scoreRow.add(createRatingBadge(ratingText));
+        if (reviewCount == 0) {
+            JLabel emptyReview=label("No reviews yet", 14, false, TEXT_MUTED);
+            body.add(left(emptyReview));
+
+        }
         body.add(left(scoreRow));
         body.add(Box.createVerticalStrut(10));
         body.add(left(text(d.getDescription(), 900, 16, TEXT_DARK, false)));
@@ -601,11 +625,76 @@ public class ExplorePanel extends JPanel {
         }
     }
 
+    private int getResponsiveColumns() {
+
+    int width = getWidth();
+
+    if(width >= 1200)
+        return 3;
+
+    if(width >= 768)
+        return 2;
+
+    return 1;
+    }
+
+    private void updateResponsiveLayout() {
+
+    int cols = getResponsiveColumns();
+
+    catGrid.setLayout(
+        new GridLayout(0, cols, 22, 22)
+    );
+
+    listGrid.setLayout(
+        new GridLayout(0, cols, 22, 22)
+    );
+
+    revalidate();
+    repaint();
+    }
+
     // =========================================================
     // CUSTOM COMPONENTS
     // =========================================================
 
     // Paints a photo scaled to "cover" the panel, or a green gradient if no photo.
+    /**
+     * A panel that always matches the scroll pane's width. Without this, a wide
+     * review list makes the page wider than the window, which stretched the
+     * header photo (it looked zoomed in) and pushed content off screen.
+     */
+    private static class ViewportWidthPanel extends JPanel implements Scrollable {
+        ViewportWidthPanel(LayoutManager layout) {
+            super(layout);
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return orientation == SwingConstants.VERTICAL ? visibleRect.height : visibleRect.width;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+    }
+
     private static class CoverPanel extends JPanel {
         private final transient BufferedImage source;
         private final Color overlay;
@@ -729,4 +818,5 @@ public class ExplorePanel extends JPanel {
             super.paintComponent(g);
         }
     }
+    
 }

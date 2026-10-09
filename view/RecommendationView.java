@@ -13,6 +13,8 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -30,6 +32,8 @@ import java.util.function.Consumer;
  */
 public class RecommendationView extends JFrame {
 
+    private final ReviewRepository reviewRepository = new ReviewRepository();
+
     private static final String FONT = "Segoe UI";
     private static final String LI_CLOSE = "</li>";
     private static final String[] IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"};
@@ -46,11 +50,18 @@ public class RecommendationView extends JFrame {
 
     // top bar
     private final JButton btnHome = new NavButton("🏠  Home");
+    private JPanel rootCards;
+    private JPanel recommendationsPage;
+    private JPanel topBar;
+    private JScrollPane detailsScroll;
+    private final JButton btnDetailsBack = new ActionButton("←  Back to Recommendations", false);
+    private final JButton btnDetailsReview = new ActionButton("Review", true);
+    private transient Consumer<DestinationModel> reviewListener = d -> {};
 
     // destination section
     private final JLabel lblDestTitle = new JLabel("Destinations");
     private final JLabel lblDestSub = new JLabel("Explore the best destinations across the Philippines.");
-    private final JPanel destGrid = new JPanel(new GridLayout(0, 5, 14, 14));
+    private final JPanel destGrid = new JPanel(new GridLayout(0,getRecommendationColumns(), 14, 14));
 
     // activities section
     private final JPanel activityPanel = new JPanel(new BorderLayout(18, 0));
@@ -65,6 +76,25 @@ public class RecommendationView extends JFrame {
     private transient Consumer<DestinationModel> destinationListener = d -> {};
     private transient Consumer<DestinationModel> detailsListener = d -> {};
 
+    private int getRecommendationColumns() {
+
+    int width = getWidth();
+
+    if(width >= 1700)
+        return 5;
+
+    if(width >= 1400)
+        return 4;
+
+    if(width >= 1000)
+        return 3;
+
+    if(width >= 700)
+        return 2;
+
+    return 1;
+    }
+
     public RecommendationView() {
         setTitle("TravelMatch - Recommendations");
         setSize(1280, 860);
@@ -72,9 +102,13 @@ public class RecommendationView extends JFrame {
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(Color.WHITE);
-        root.add(createTopBar(), BorderLayout.NORTH);
+        JPanel root = new JPanel(new CardLayout());
+        root.setBackground(BACKGROUND);
+        rootCards = root;
+        recommendationsPage = new JPanel(new BorderLayout());
+        recommendationsPage.setBackground(BACKGROUND);
+        topBar = createTopBar();
+        recommendationsPage.add(topBar, BorderLayout.NORTH);
 
         content = new ScrollPanel(new GridBagLayout());
         content.setBackground(BACKGROUND);
@@ -99,7 +133,14 @@ public class RecommendationView extends JFrame {
         scroll.getViewport().setBackground(BACKGROUND);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        root.add(scroll, BorderLayout.CENTER);
+        recommendationsPage.add(scroll, BorderLayout.CENTER);
+        rootCards.add(recommendationsPage, "RECOMMENDATIONS");
+        rootCards.add(new JPanel(new BorderLayout()), "DETAILS");
+
+        btnDetailsBack.addActionListener(e -> showRecommendationsPage());
+        btnDetailsReview.addActionListener(e -> {
+            if (shownDestination != null) reviewListener.accept(shownDestination);
+        });
 
         btnDetails.addActionListener(e -> {
             if (shownDestination != null) {
@@ -107,7 +148,13 @@ public class RecommendationView extends JFrame {
             }
         });
 
-        add(root);
+        add(rootCards);
+        addComponentListener(new ComponentAdapter() {
+        @Override
+        public void componentResized(ComponentEvent e) {
+        updateResponsiveLayout();
+        }
+        });
     }
 
     // =========================================================
@@ -119,6 +166,7 @@ public class RecommendationView extends JFrame {
 
     public void addDestinationListener(Consumer<DestinationModel> l){ destinationListener = l; }
     public void addDetailsListener(Consumer<DestinationModel> l)    { detailsListener = l; }
+    public void addReviewListener(Consumer<DestinationModel> l)     { reviewListener = l; }
 
     /** Destination cards (every region and category). 'selected' may be null. */
     public void showDestinations(List<DestinationModel> list, DestinationModel selected) {
@@ -154,7 +202,7 @@ public class RecommendationView extends JFrame {
                     : "No destinations matched your preferences.";
             destGrid.add(label(emptyMessage, 15, false, TEXT_MUTED));
         } else {
-            destGrid.setLayout(new GridLayout(0, 5, 14, 14));
+            destGrid.setLayout(new GridLayout(0, getRecommendationColumns(), 14, 14));
             int visibleCount = Math.min(list.size(), PreferenceService.MAX_RECOMMENDATIONS);
             for (int index = 0; index < visibleCount; index++) {
                 DestinationModel destination = list.get(index);
@@ -237,44 +285,197 @@ public class RecommendationView extends JFrame {
                 scroll.getViewport().setViewPosition(new Point(0, 0)));
     }
 
-    /** Full details of one destination (View Details button). */
+    /**
+     * Shows a full-page, scrollable destination detail view. All destination
+     * content comes from DestinationModel and the existing repository helpers.
+     */
     public void showDetails(DestinationModel d, String category) {
-        String cat = category != null ? category : d.getCategories().get(0);
-        StringBuilder sb = new StringBuilder("<html><body style='font-family:" + FONT
-                + ";width:440px'>");
-        sb.append("<h2 style='color:#0F7B52;margin:0'>").append(esc(d.getName())).append("</h2>");
-        sb.append("<p style='color:#5F6F7A;margin:2px 0 8px 0'>").append(esc(d.getProvince()))
-                .append(" · ").append(esc(d.getRegion())).append("</p>");
-        sb.append("<p><span style='color:#FFB300'>★</span> <b>User Reviews:</b> ").append(d.getScore()).append("/5</p>");
-        sb.append("<p>").append(esc(d.getDescription())).append("</p>");
-        sb.append("<p><b>Best time:</b> ").append(esc(nz(d.getBestTime())))
-                .append("<br><b>Duration:</b> ").append(esc(nz(d.getDuration())))
-                .append("<br><b>Budget:</b> ").append(esc(nz(d.getBudget())))
-                .append("<br><b>Difficulty:</b> ").append(esc(nz(d.getDifficulty()))).append("</p>");
-        sb.append("<p><b>Activities</b></p><ul>");
-        for (String a : d.getActivities(cat)) {
-            sb.append("<li>").append(esc(a)).append(LI_CLOSE);
-        }
-        sb.append("</ul><p><b>Places to visit</b></p><ul>");
-        for (String p : d.getPlaces()) {
-            sb.append("<li>").append(esc(p.replace("|", "—"))).append(LI_CLOSE);
-        }
-        sb.append("</ul><p><b>Travel tips</b></p><ul>");
-        for (String t : DestinationRepository.travelTips(cat)) {
-            sb.append("<li>").append(esc(t)).append(LI_CLOSE);
-        }
-        sb.append("</ul><p><b>What to bring</b></p><ul>");
-        for (String b : DestinationRepository.whatToBring(cat)) {
-            sb.append("<li>").append(esc(b)).append(LI_CLOSE);
-        }
-        sb.append("</ul></body></html>");
+        double avg = reviewRepository.getAverageRating(d.getName());
 
-        JEditorPane pane = new JEditorPane("text/html", sb.toString());
-        pane.setEditable(false);
-        pane.setCaretPosition(0);
-        JScrollPane sp = new JScrollPane(pane);
-        sp.setPreferredSize(new Dimension(500, 460));
-        JOptionPane.showMessageDialog(this, sp, d.getName() + " — Details", JOptionPane.PLAIN_MESSAGE);
+        int count = reviewRepository.getReviewCount(d.getName());
+
+        String title;
+        if(count == 0){
+            title = "★ User Reviews: 0/5";
+        }else{
+            title = String.format(java.util.Locale.US, "★ User Reviews: %.1f/5 (%d)", avg, count);
+        }
+        JLabel rating = createBadge(title, true);
+
+
+        if (d == null) return;
+        shownDestination = d;
+        String cat = category != null ? category
+                : (d.getCategories().isEmpty() ? DestinationRepository.CITY : d.getCategories().get(0));
+
+        JPanel page = new JPanel(new BorderLayout());
+        page.setBackground(BACKGROUND);
+        JPanel detailContent = new JPanel();
+        detailContent.setLayout(new BoxLayout(detailContent, BoxLayout.Y_AXIS));
+        detailContent.setBackground(BACKGROUND);
+        detailContent.setBorder(new EmptyBorder(22, 30, 32, 30));
+
+        HeroPanel hero = new HeroPanel(loadDestinationImage(d, cat));
+        hero.setLayout(new BorderLayout());
+        hero.setPreferredSize(new Dimension(900, 245));
+        hero.setMinimumSize(new Dimension(500, 210));
+        JPanel heroText = new JPanel();
+        heroText.setOpaque(false);
+        heroText.setLayout(new BoxLayout(heroText, BoxLayout.Y_AXIS));
+        heroText.setBorder(new EmptyBorder(0, 26, 26, 20));
+        heroText.add(Box.createVerticalGlue());
+        heroText.add(left(label(d.getName(), 34, true, Color.WHITE)));
+        heroText.add(Box.createVerticalStrut(7));
+        heroText.add(left(label(nz(d.getProvince()) + " · " + nz(d.getRegion()), 16, false, Color.WHITE)));
+        hero.add(heroText, BorderLayout.CENTER);
+        JPanel heroActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        heroActions.setOpaque(false);
+        heroActions.setBorder(new EmptyBorder(18, 0, 0, 20));
+        heroActions.add(btnDetailsReview);
+        hero.add(heroActions, BorderLayout.NORTH);
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailContent.add(hero);
+        detailContent.add(Box.createVerticalStrut(18));
+
+        JPanel ratingRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        ratingRow.setOpaque(false);
+        rating.setFont(new Font(FONT, Font.BOLD, 13));
+        rating.setBorder(new EmptyBorder(9, 15, 9, 15));
+        ratingRow.add(rating);
+        ratingRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailContent.add(ratingRow);
+        detailContent.add(Box.createVerticalStrut(12));
+        detailContent.add(left(text(d.getDescription(), 1050, 15, TEXT_DARK, false)));
+        detailContent.add(Box.createVerticalStrut(22));
+
+        addSectionHeading(detailContent, "Recommended Places");
+        JPanel placesRow = new JPanel(new GridLayout(1, 3, 16, 0));
+        placesRow.setOpaque(false);
+        List<String> places = d.getPlaces();
+        for (int i = 0; i < 3; i++) {
+            String raw = i < places.size() ? places.get(i) : "";
+            String[] parts = raw.split("\\|", 2);
+            String placeName = raw.isEmpty() ? "Explore " + d.getName() : parts[0].trim();
+            String placeDescription = parts.length > 1 ? parts[1].trim()
+                    : (raw.isEmpty() ? "Discover a local highlight and enjoy the scenery." : "A recommended stop to add to your itinerary.");
+            placesRow.add(createInfoCard(placeName, placeDescription, false));
+        }
+        placesRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        placesRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+        detailContent.add(placesRow);
+        detailContent.add(Box.createVerticalStrut(22));
+
+        addSectionHeading(detailContent, "Travel Information");
+        JPanel infoRow = new JPanel(new GridLayout(1, 4, 14, 0));
+        infoRow.setOpaque(false);
+        infoRow.add(createMetricCard("BEST TIME TO VISIT", nz(d.getBestTime())));
+        infoRow.add(createMetricCard("RECOMMENDED DURATION", nz(d.getDuration())));
+        infoRow.add(createMetricCard("ESTIMATED BUDGET", nz(d.getBudget())));
+        infoRow.add(createMetricCard("DIFFICULTY", nz(d.getDifficulty())));
+        infoRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        infoRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 112));
+        detailContent.add(infoRow);
+        detailContent.add(Box.createVerticalStrut(22));
+
+        List<String> tips = d.getTravelTips().isEmpty() ? DestinationRepository.travelTips(cat) : d.getTravelTips();
+        List<String> bring = d.getWhatToBring().isEmpty() ? DestinationRepository.whatToBring(cat) : d.getWhatToBring();
+        JPanel adviceRow = new JPanel(new GridLayout(1, 2, 16, 0));
+        adviceRow.setOpaque(false);
+        adviceRow.add(createListCard("Travel Tips", tips));
+        adviceRow.add(createListCard("What to Bring", bring));
+        adviceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailContent.add(adviceRow);
+
+        JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        bottomActions.setOpaque(false);
+        bottomActions.setBorder(new EmptyBorder(20, 0, 0, 0));
+        bottomActions.add(btnDetailsBack);
+        bottomActions.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailContent.add(bottomActions);
+
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setBackground(BACKGROUND);
+        wrap.add(detailContent, BorderLayout.NORTH);
+        detailsScroll = new JScrollPane(wrap);
+        detailsScroll.setBorder(null);
+        detailsScroll.getViewport().setBackground(BACKGROUND);
+        detailsScroll.getVerticalScrollBar().setUnitIncrement(16);
+        detailsScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        if (rootCards.getComponentCount() > 1) rootCards.remove(1);
+        rootCards.add(detailsScroll, "DETAILS");
+        ((CardLayout) rootCards.getLayout()).show(rootCards, "DETAILS");
+        detailsScroll.getViewport().setViewPosition(new Point(0, 0));
+        refresh(rootCards);
+    }
+
+    private void showRecommendationsPage() {
+        ((CardLayout) rootCards.getLayout()).show(rootCards, "RECOMMENDATIONS");
+        scrollToTop();
+    }
+
+    private void addSectionHeading(JPanel parent, String title) {
+        JLabel heading = label(title, 21, true, TEXT_DARK);
+        heading.setBorder(new EmptyBorder(0, 0, 11, 0));
+        parent.add(left(heading));
+    }
+
+    private JPanel createInfoCard(String title, String description, boolean metric) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1, true), new EmptyBorder(16, 17, 16, 17)));
+        card.add(left(label(title, 15, true, TEXT_DARK)));
+        card.add(Box.createVerticalStrut(8));
+        card.add(left(text(description, 250, 13, TEXT_MUTED, false)));
+        return card;
+    }
+
+    private JPanel createMetricCard(String heading, String value) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1, true), new EmptyBorder(15, 15, 15, 15)));
+        card.add(left(label(heading, 10, true, TEXT_MUTED)));
+        card.add(Box.createVerticalStrut(10));
+        card.add(left(text(value, 190, 15, TEXT_DARK, true)));
+        return card;
+    }
+
+    private JPanel createListCard(String heading, List<String> items) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1, true), new EmptyBorder(18, 20, 18, 20)));
+        card.add(left(label(heading, 19, true, TEXT_DARK)));
+        card.add(Box.createVerticalStrut(12));
+        for (String item : items) {
+            JLabel bullet = text("•  " + item, 480, 13, TEXT_MUTED, false);
+            bullet.setBorder(new EmptyBorder(0, 0, 8, 0));
+            card.add(left(bullet));
+        }
+        return card;
+    }
+
+    private static class HeroPanel extends JPanel {
+        private final BufferedImage image;
+        HeroPanel(BufferedImage image) { this.image = image; setOpaque(false); }
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            int w = getWidth(), h = getHeight();
+            if (image != null && w > 0 && h > 0) {
+                double scale = Math.max((double) w / image.getWidth(), (double) h / image.getHeight());
+                int iw = (int) Math.ceil(image.getWidth() * scale), ih = (int) Math.ceil(image.getHeight() * scale);
+                g.drawImage(image, (w - iw) / 2, (h - ih) / 2, iw, ih, null);
+            } else {
+                g.setPaint(new GradientPaint(0, 0, PRIMARY, w, h, PRIMARY_LIGHT));
+                g.fillRect(0, 0, w, h);
+            }
+            g.setColor(new Color(7, 22, 30, 150));
+            g.fillRect(0, 0, w, h);
+            g.dispose();
+            super.paintComponent(graphics);
+        }
     }
 
     public void showMessage(String message) {
@@ -474,7 +675,7 @@ public class RecommendationView extends JFrame {
     }
 
     private static String nz(String s) {
-        return s == null ? "—" : s;
+        return s == null || s.trim().isEmpty() ? "—" : s;
     }
 
     private static String clean(String name) {
@@ -529,6 +730,12 @@ public class RecommendationView extends JFrame {
         } catch (IOException ex) {
             return null;   // unreadable image: treated as missing
         }
+    }
+
+    private void updateResponsiveLayout() {
+        destGrid.setLayout(new GridLayout(0, getRecommendationColumns(), 14, 14));
+        revalidate();
+        repaint();
     }
 
     // =========================================================

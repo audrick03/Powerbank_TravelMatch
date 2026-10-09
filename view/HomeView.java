@@ -9,6 +9,8 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
@@ -74,6 +76,7 @@ public class HomeView extends JFrame {
     // Destination display components
     private JLabel lblDestinationTitle;
     private JPanel destinationCardsPanel;
+    private JPanel regionCardsPanel;
 
     public HomeView() {
         setTitle("TravelMatch");
@@ -100,6 +103,13 @@ public class HomeView extends JFrame {
 
         setContentPane(mainPanel);
         pageLayout.show(pageContainer, PAGE_HOME);
+
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateResponsiveLayout();
+            }
+        });
     }
 
     // =========================
@@ -186,8 +196,11 @@ public class HomeView extends JFrame {
         lblDestinationTitle.setFont(new Font(FONT_NAME, Font.BOLD, 28));
         lblDestinationTitle.setForeground(TEXT_DARK);
 
-        destinationCardsPanel = new JPanel(new GridLayout(0, 3, 22, 22));
-        destinationCardsPanel.setBackground(BACKGROUND);
+        destinationCardsPanel = new JPanel();
+        destinationCardsPanel.setOpaque(false);
+
+        destinationCardsPanel.setLayout(new GridLayout(0, getColumnCount(), 22, 22));
+        
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -544,23 +557,25 @@ public class HomeView extends JFrame {
     // =========================
 
     private JPanel createRegionSection() {
+        regionCardsPanel = new JPanel();
+        regionCardsPanel.setOpaque(false);
         JPanel section = new JPanel(new BorderLayout());
-        section.setBackground(BACKGROUND);
-        section.setBorder(new EmptyBorder(20, 35, 25, 35));
+        section.setOpaque(false);
+
+        regionCardsPanel.setLayout(new GridLayout(0, getColumnCount(), 22, 22));
+
 
         JLabel lblRegions = new JLabel("Explore the Philippines");
         lblRegions.setFont(new Font(FONT_NAME, Font.BOLD, 30));
         lblRegions.setForeground(TEXT_DARK);
         lblRegions.setBorder(new EmptyBorder(0, 0, 15, 0));
 
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 3, 22, 22));
-        cardsPanel.setBackground(BACKGROUND);
         for (String region : DestinationRepository.REGIONS) {
-            cardsPanel.add(createRegionCard(region));
+            regionCardsPanel.add(createRegionCard(region));
         }
 
         section.add(lblRegions, BorderLayout.NORTH);
-        section.add(cardsPanel, BorderLayout.CENTER);
+        section.add(regionCardsPanel, BorderLayout.CENTER);
         return section;
     }
 
@@ -710,7 +725,38 @@ public class HomeView extends JFrame {
     // =====================================================
     // CUSTOM COMPONENTS
     // =====================================================
+    private int getColumnCount() {
 
+    int width = getWidth();
+
+    if(width >= 1400)
+        return 3;
+
+    if(width >= 900)
+        return 2;
+
+    return 1;
+    }
+
+    private void updateResponsiveLayout() {
+
+    int cols = getColumnCount();
+
+    if(regionCardsPanel != null) {
+        regionCardsPanel.setLayout(
+            new GridLayout(0, cols, 22, 22)
+        );
+    }
+
+    if(destinationCardsPanel != null) {
+        destinationCardsPanel.setLayout(
+            new GridLayout(0, cols, 22, 22)
+        );
+    }
+
+    revalidate();
+    repaint();
+    }
     // Panel that paints an image scaled to "cover" its area,
     // with an optional color overlay on top.
     private static class CoverImagePanel extends JPanel {

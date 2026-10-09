@@ -5,6 +5,8 @@ import repository.*;
 import service.*;
 import view.*;
 
+import javax.swing.*;
+import java.awt.BorderLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -22,23 +24,29 @@ public class RecommendationController {
     private final List<DestinationModel> destinations;
     private final List<DestinationRecommendation> recommendations;
     private final Runnable onHome;
+    private final UserModel currentUser;
 
     private DestinationModel selectedDestination;
+    private final ReviewView reviewView = new ReviewView();
+    private final ReviewController reviewController;
+    private JFrame reviewFrame;
 
     public RecommendationController(RecommendationView view) {
-        this(view, topDestinations(), null, null);
+        this(view, topDestinations(), null, null, null);
     }
 
     public RecommendationController(RecommendationView view,
                                     List<DestinationRecommendation> recommendations,
-                                    Runnable onHome) {
-        this(view, null, limitRecommendations(recommendations), onHome);
+                                    Runnable onHome,
+                                    UserModel currentUser) {
+        this(view, null, limitRecommendations(recommendations), onHome, currentUser);
     }
 
     private RecommendationController(RecommendationView view,
                                      List<DestinationModel> destinations,
                                      List<DestinationRecommendation> recommendations,
-                                     Runnable onHome) {
+                                     Runnable onHome,
+                                     UserModel currentUser) {
         if (view == null || (destinations == null && recommendations == null)) {
             throw new IllegalArgumentException("A recommendation view and results are required");
         }
@@ -46,6 +54,7 @@ public class RecommendationController {
         this.destinations = destinations;
         this.recommendations = recommendations;
         this.onHome = onHome;
+        this.currentUser = currentUser;
 
         view.addHomeListener(e -> {
             view.dispose();
@@ -64,6 +73,8 @@ public class RecommendationController {
         view.addDestinationListener(this::handleDestinationClick);
         view.addDetailsListener(d -> view.showDetails(d, null));
         view.addBackToDestinationsListener(e -> backToDestinations());
+        view.addReviewListener(this::openReviews);
+        reviewController = new ReviewController(reviewView);
 
         refresh();
     }
@@ -72,6 +83,24 @@ public class RecommendationController {
     private void handleDestinationClick(DestinationModel destination) {
         selectedDestination = destination;
         refresh();
+    }
+
+    /** Reuse the application's existing destination-scoped review feature. */
+    private void openReviews(DestinationModel destination) {
+        reviewController.reload();
+        reviewView.setDestination(destination.getName());
+        reviewView.setAuthenticated(currentUser != null);
+        if (reviewFrame == null || !reviewFrame.isDisplayable()) {
+            reviewFrame = new JFrame("TravelMatch - Reviews");
+            reviewFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            reviewFrame.setLayout(new BorderLayout());
+            reviewFrame.add(new JScrollPane(reviewView), BorderLayout.CENTER);
+            reviewFrame.setSize(900, 700);
+            reviewFrame.setMinimumSize(new java.awt.Dimension(700, 550));
+            reviewFrame.setLocationRelativeTo(view);
+        }
+        reviewFrame.setVisible(true);
+        reviewFrame.toFront();
     }
 
     private void backToDestinations() {

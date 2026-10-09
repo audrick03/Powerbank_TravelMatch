@@ -106,7 +106,7 @@ public class PreferenceController {
         if (!recommendations.isEmpty()) {
             RecommendationView recommendationView = new RecommendationView();
             new RecommendationController(
-                    recommendationView, recommendations, onReturnHome);
+                    recommendationView, recommendations, onReturnHome, user);
             view.dispose();
             recommendationView.setVisible(true);
         }

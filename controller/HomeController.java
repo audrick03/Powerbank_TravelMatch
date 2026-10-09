@@ -10,6 +10,7 @@ import javax.swing.WindowConstants;
 import java.util.List;
 import java.util.Optional;
 
+
 /**
  * Home flow:
  *   REGION -> CATEGORY -> DESTINATION -> PLACES / DETAILS
@@ -26,6 +27,7 @@ public class HomeController {
     private final ExplorePanel explore;
     private LoginView loginView;
     private final ReviewView reviewView = new ReviewView();
+    private ReviewController reviewController;
     private LoginController loginController;
     private UserModel currentUser;
     private boolean openPreferencesAfterLogin;
@@ -53,7 +55,7 @@ public class HomeController {
             createLoginController();
         }
 
-        new ReviewController(reviewView);
+        reviewController = new ReviewController(reviewView);
 
         attachListeners();
         updateRegionCounts();
@@ -345,7 +347,7 @@ public class HomeController {
 
         RecommendationView view = new RecommendationView();
         view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-        new RecommendationController(view, recommendations, this::showHome);
+        new RecommendationController(view, recommendations, this::showHome, currentUser);
         homeView.setVisible(false);
         view.setVisible(true);
     }
@@ -357,7 +359,9 @@ public class HomeController {
             return;
         }
         level = Level.REVIEW;
+        reviewController.reload();
         reviewView.setDestination(selectedDestination.getName());
+        reviewView.setAuthenticated(currentUser != null);
         explore.showReviews(selectedDestination, selectedCategory, reviewView);
         homeView.showExplorePage();
     }

@@ -18,12 +18,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+
 /**
  * Reviews of ONE destination. It is a panel, shown by ExplorePanel directly
  * below the destination header; the controller tells it which destination
  * with setDestination(). Only that destination's reviews are listed.
  */
 public class ReviewView extends JPanel {
+    private boolean authenticated;
+    private JButton btnWriteReview;
+    private JButton btnLoginPrompt;
+
+    public void setAuthenticated(boolean authenticated) {
+        this.authenticated = authenticated;
+        updateWriteButtons();
+    }
+
+    private void updateWriteButtons() {
+        if (btnWriteReview != null && btnLoginPrompt != null) {
+            btnWriteReview.setVisible(authenticated);
+            btnLoginPrompt.setVisible(!authenticated);
+        }
+    }
+
+    public boolean isAuthenticated() {
+        return authenticated;
+    }
+
     private static final String SANS = "SansSerif";
 
     private static final Color DARK_GREEN  = new Color(0, 102, 51);
@@ -123,15 +144,20 @@ public class ReviewView extends JPanel {
         lblHeading.setFont(new Font(SANS, Font.BOLD, 22));
         lblHeading.setForeground(TEXT_DARK);
 
-        JButton btnWrite = createStyledButton("✎  Write a review");
-        btnWrite.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(MID_GREEN, 2, true),
-                BorderFactory.createEmptyBorder(6, 14, 6, 14)));
-        btnWrite.addActionListener(e -> openWriteDialog());
+        // Both buttons are created once; setAuthenticated() shows the right one,
+        // so logging in after this view was built still works.
+        btnWriteReview = createStyledButton("✎  Write a review");
+        btnWriteReview.addActionListener(e -> openWriteDialog());
+
+        btnLoginPrompt = createOutlineButton("Log in to write a review");
+        btnLoginPrompt.addActionListener(e -> showMessage("Please log in to write a review."));
+
+        updateWriteButtons();
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         right.setOpaque(false);
-        right.add(btnWrite);
+        right.add(btnWriteReview);
+        right.add(btnLoginPrompt);
 
         header.add(lblHeading, BorderLayout.CENTER);
         header.add(right, BorderLayout.EAST);
@@ -314,12 +340,17 @@ public class ReviewView extends JPanel {
     //  "Write a review" dialog (the destination is the one being viewed)
     // ---------------------------------------------------------------
     private void openWriteDialog() {
+
+        if (!authenticated) {
+            showMessage("Please log in to write a review.");
+            return;
+        }
         if (currentDestination == null || currentDestination.isEmpty()) {
             showMessage("Open a destination first to write a review.");
             return;
         }
-        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Write a review",
-                Dialog.ModalityType.APPLICATION_MODAL);
+
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Write a review", Dialog.ModalityType.APPLICATION_MODAL);
 
         // ---- Green banner ----
         JPanel banner = new JPanel() {
@@ -707,6 +738,12 @@ public class ReviewView extends JPanel {
     public void addLoadedReview(String author, String destination, int rating,
                                 String title, String comment, String date) {
         reviews.add(0, new Review(author, destination, rating, title, comment, date));
+        refreshList();
+    }
+
+    /** Removes all reviews held by the view (the controller reloads them from file). */
+    public void clearReviews() {
+        reviews.clear();
         refreshList();
     }
 
