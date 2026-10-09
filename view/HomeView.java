@@ -25,7 +25,7 @@ import java.util.function.Consumer;
 public class HomeView extends JFrame {
 
     private static final String FONT_NAME = "Segoe UI";
-    private static final String EMOJI_FONT = "Segoe UI Emoji";
+    private static final String[] IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"};
     private static final String DEFAULT_COUNT_TEXT = "0 destinations";
 
     // Page names for the CardLayout
@@ -58,11 +58,8 @@ public class HomeView extends JFrame {
     // Category counts
     private final Map<String, JLabel> countLabels = new HashMap<>();
 
-    // Category click listener
-    private Consumer<String> categoryListener = category -> {};
-
     // Region click listener + region count labels (Luzon / Visayas / Mindanao)
-    private Consumer<String> regionListener = region -> {};
+    private transient Consumer<String> regionListener = region -> {};
     private final Map<String, JLabel> regionCountLabels = new HashMap<>();
 
     // Region -> Category -> Destination -> Recommendation pages
@@ -111,40 +108,45 @@ public class HomeView extends JFrame {
 
     // Looks for images/<name>.jpg|jpeg|png on the classpath first,
     // then in an "images" folder in the project root.
-    private BufferedImage loadImage(String name) {
+        private BufferedImage loadImage(String name) {
         if (imageCache.containsKey(name)) {
             return imageCache.get(name);
         }
-
         BufferedImage result = null;
-        for (String ext : new String[]{".jpg", ".jpeg", ".png"}) {
-            String file = name + ext;
-
-            try (InputStream in = HomeView.class
-                    .getResourceAsStream("/images/" + file)) {
-                if (in != null) {
-                    result = ImageIO.read(in);
-                }
-            } catch (IOException ignored) {
-            }
-
-            if (result == null) {
-                File f = new File("images/" + file);
-                if (f.exists()) {
-                    try {
-                        result = ImageIO.read(f);
-                    } catch (IOException ignored) {
-                    }
-                }
-            }
-
+        for (String ext : IMAGE_EXTENSIONS) {
+            result = readImage(name + ext);
             if (result != null) {
                 break;
             }
         }
-
         imageCache.put(name, result);
         return result;
+    }
+
+    // Classpath first, then the "images" folder in the project root
+    private static BufferedImage readImage(String file) {
+        BufferedImage fromClasspath = readFromClasspath(file);
+        return fromClasspath != null ? fromClasspath : readFromDisk(file);
+    }
+
+    private static BufferedImage readFromClasspath(String file) {
+        try (InputStream in = HomeView.class.getResourceAsStream("/images/" + file)) {
+            return in != null ? ImageIO.read(in) : null;
+        } catch (IOException | IllegalArgumentException ex) {
+            return null;   // unreadable image: treated as missing
+        }
+    }
+
+    private static BufferedImage readFromDisk(String file) {
+        File f = new File("images/" + file);
+        if (!f.exists()) {
+            return null;
+        }
+        try {
+            return ImageIO.read(f);
+        } catch (IOException ex) {
+            return null;   // unreadable image: treated as missing
+        }
     }
 
     // File names match the category names:
@@ -204,7 +206,7 @@ public class HomeView extends JFrame {
         scroll.getViewport().setBackground(BACKGROUND);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         scroll.setHorizontalScrollBarPolicy(
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         );
         return scroll;
     }
@@ -338,42 +340,8 @@ public class HomeView extends JFrame {
         return heroPanel;
     }
 
-    // =========================
-    // CATEGORY SECTION
-    // =========================
-
-    private JPanel createCategorySection() {
-        JPanel section = new JPanel(new BorderLayout());
-        section.setBackground(BACKGROUND);
-        section.setBorder(new EmptyBorder(20, 35, 25, 35));
-
-        JLabel lblCategories = new JLabel("Popular Categories");
-        lblCategories.setFont(new Font(FONT_NAME, Font.BOLD, 30));
-        lblCategories.setForeground(TEXT_DARK);
-        lblCategories.setBorder(new EmptyBorder(0, 0, 15, 0));
-
-        JPanel cardsPanel = new JPanel(new GridLayout(2, 3, 22, 22));
-        cardsPanel.setBackground(BACKGROUND);
-
-        cardsPanel.add(createCard("Beach", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("Mountain", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("City", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("Adventure", DEFAULT_COUNT_TEXT));
-        cardsPanel.add(createCard("Cultural", DEFAULT_COUNT_TEXT));
-
-        // Empty sixth cell for the 2x3 grid
-        JPanel filler = new JPanel();
-        filler.setOpaque(false);
-        cardsPanel.add(filler);
-
-        section.add(lblCategories, BorderLayout.NORTH);
-        section.add(cardsPanel, BorderLayout.CENTER);
-
-        return section;
-    }
-
-    // =========================
-    // CATEGORY CARD
+        // =========================
+    // CARDS
     // =========================
 
     private Border cardBorder(boolean hover) {
@@ -386,77 +354,7 @@ public class HomeView extends JFrame {
         );
     }
 
-    private JPanel createCard(String name, String destinations) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(Color.WHITE);
-        card.setBorder(cardBorder(false));
-        card.setPreferredSize(new Dimension(200, 290));
-
-        // Photo area
-        BufferedImage photo = loadImage(imageNameFor(name));
-        CoverImagePanel imagePanel =
-                new CoverImagePanel(photo, PRIMARY, null);
-        imagePanel.setLayout(new GridBagLayout());
-        imagePanel.setPreferredSize(new Dimension(200, 215));
-
-        // If the photo is missing, show the emoji icon instead
-        if (photo == null) {
-            JLabel lblIcon = new JLabel(iconFor(name));
-            lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 44));
-            imagePanel.add(lblIcon);
-        }
-
-        // Category information
-        JPanel infoPanel = new JPanel();
-        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-        infoPanel.setBackground(Color.WHITE);
-        infoPanel.setBorder(new EmptyBorder(12, 16, 14, 16));
-
-        JLabel lblName = new JLabel(name);
-        lblName.setFont(new Font(FONT_NAME, Font.BOLD, 20));
-        lblName.setForeground(TEXT_DARK);
-
-        JLabel lblDest = new JLabel(destinations);
-        lblDest.setFont(new Font(FONT_NAME, Font.PLAIN, 14));
-        lblDest.setForeground(TEXT_MUTED);
-
-        countLabels.put(name, lblDest);
-
-        infoPanel.add(lblName);
-        infoPanel.add(Box.createVerticalStrut(4));
-        infoPanel.add(lblDest);
-
-        card.add(imagePanel, BorderLayout.CENTER);
-        card.add(infoPanel, BorderLayout.SOUTH);
-
-        MouseAdapter clickListener = new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                categoryListener.accept(name);
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                card.setBorder(cardBorder(true));
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                // Ignore exits into a child of the card
-                Point p = SwingUtilities.convertPoint(
-                        e.getComponent(), e.getPoint(), card);
-                if (!card.contains(p)) {
-                    card.setBorder(cardBorder(false));
-                }
-            }
-        };
-
-        addClickListenerRecursively(card, clickListener);
-
-        return card;
-    }
-
-    // Attach mouse listener to card and all its children
+        // Attach mouse listener to card and all its children
     private void addClickListenerRecursively(
             Component component, MouseAdapter listener) {
 
@@ -496,16 +394,13 @@ public class HomeView extends JFrame {
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setPaint(new GradientPaint(
-                            0, 0, PRIMARY,
-                            getWidth(), getHeight(), PRIMARY_LIGHT
+                            0f, 0f, PRIMARY,
+                            (float) getWidth(), (float) getHeight(), PRIMARY_LIGHT
                     ));
                     g2.fillRect(0, 0, getWidth(), getHeight());
                     g2.dispose();
                 }
             };
-            JLabel lblIcon = new JLabel(iconFor(firstCategory));
-            lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 44));
-            header.add(lblIcon);
         }
         header.setPreferredSize(new Dimension(200, 150));
 
@@ -595,17 +490,6 @@ public class HomeView extends JFrame {
         return badge;
     }
 
-    private String iconFor(String category) {
-        switch (category) {
-            case "Beach":     return "🏖";
-            case "Mountain":  return "⛰";
-            case "City":      return "🏙";
-            case "Adventure": return "🎯";
-            case "Cultural":  return "🏛";
-            default:          return "📍";
-        }
-    }
-
     // Rebuild the card grid and switch to the destination page
     private void populateDestinationCards(
             Map<String, List<String>> destinations) {
@@ -691,11 +575,6 @@ public class HomeView extends JFrame {
         CoverImagePanel imagePanel = new CoverImagePanel(photo, PRIMARY, null);
         imagePanel.setLayout(new GridBagLayout());
         imagePanel.setPreferredSize(new Dimension(200, 230));
-        if (photo == null) {
-            JLabel lblIcon = new JLabel("🗺");
-            lblIcon.setFont(new Font(EMOJI_FONT, Font.PLAIN, 54));
-            imagePanel.add(lblIcon);
-        }
 
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
@@ -808,10 +687,6 @@ public class HomeView extends JFrame {
         btnSearch.addActionListener(listener);
     }
 
-    public void addCategoryListener(Consumer<String> listener) {
-        this.categoryListener = listener;
-    }
-
     // =========================
     // CATEGORY COUNT
     // =========================
@@ -839,10 +714,11 @@ public class HomeView extends JFrame {
     // Panel that paints an image scaled to "cover" its area,
     // with an optional color overlay on top.
     private static class CoverImagePanel extends JPanel {
-        private final BufferedImage source;
+        private final transient BufferedImage source;
         private final Color overlay;
-        private BufferedImage cache;
-        private int cacheW, cacheH;
+        private transient BufferedImage cache;
+        private int cacheW;
+        private int cacheH;
 
         CoverImagePanel(BufferedImage source, Color base, Color overlay) {
             this.source = source;
@@ -934,12 +810,12 @@ public class HomeView extends JFrame {
             if (outline != null) {
                 float half = outlineWidth / 2f;
                 g2.setColor(outline);
-                g2.setStroke(new BasicStroke(outlineWidth));
+                g2.setStroke(new BasicStroke((float) outlineWidth));
                 g2.draw(new RoundRectangle2D.Float(
                         half, half,
-                        getWidth() - outlineWidth,
-                        getHeight() - outlineWidth,
-                        10, 10));
+                        getWidth() - (float) outlineWidth,
+                        getHeight() - (float) outlineWidth,
+                        10f, 10f));
             }
             g2.dispose();
             super.paintComponent(g);

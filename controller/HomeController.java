@@ -5,25 +5,26 @@ import repository.*;
 import service.*;
 import view.*;
 
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.WindowConstants;
 import java.util.List;
 
 /**
  * Home flow:
- *   REGION -> CATEGORY -> DESTINATION -> RECOMMENDED ACTIVITIES / PLACES / DETAILS
+ *   REGION -> CATEGORY -> DESTINATION -> PLACES / DETAILS
  * The controller remembers what the user selected, so each step only shows
  * data for that region + category + destination.
  */
 public class HomeController {
 
-    private enum Level { HOME, CATEGORIES, LIST, DETAIL }
+    private enum Level { HOME, CATEGORIES, LIST, DETAIL, REVIEW }
 
     private final DestinationRepository repository = DestinationRepository.getInstance();
 
     private final HomeView homeView;
     private final ExplorePanel explore;
     private LoginView loginView;
+    private final ReviewView reviewView = new ReviewView();
     private LoginController loginController;
     private UserModel currentUser;
     private boolean openPreferencesAfterLogin;
@@ -33,6 +34,7 @@ public class HomeController {
     private String selectedRegion;
     private String selectedCategory;   // null when the list came from a search
     private boolean fromSearch;
+    private DestinationModel selectedDestination;   // the destination being viewed (for reviews)
     private Runnable restoreList = () -> {};
 
     public HomeController(HomeView homeView, LoginView loginView) {
@@ -48,6 +50,8 @@ public class HomeController {
         if (loginView != null) {
             createLoginController();
         }
+
+        new ReviewController(reviewView);
 
         attachListeners();
         updateRegionCounts();
@@ -65,6 +69,7 @@ public class HomeController {
         explore.addCategoryListener(this::handleCategoryClick);
         explore.addDestinationListener(this::handleDestinationClick);
         explore.addBackListener(e -> goBack());
+        explore.addReviewListener(e -> showReviews());
     }
 
     // Show the home page
@@ -85,6 +90,7 @@ public class HomeController {
         level = Level.HOME;
         selectedRegion = null;
         selectedCategory = null;
+        selectedDestination = null;
         fromSearch = false;
 
         updateRegionCounts();
@@ -96,6 +102,9 @@ public class HomeController {
     // Back button inside the explore pages: one step up the flow
     private void goBack() {
         switch (level) {
+            case REVIEW:
+                handleDestinationClick(selectedDestination);
+                break;
             case DETAIL:
                 restoreList.run();
                 break;
@@ -149,6 +158,7 @@ public class HomeController {
 
     // DESTINATION -> activities, places, details
     private void handleDestinationClick(DestinationModel destination) {
+        selectedDestination = destination;
         level = Level.DETAIL;
         explore.showDetail(destination, selectedCategory);
         homeView.showExplorePage();
@@ -279,13 +289,21 @@ public class HomeController {
     // Recommendations button: flat list window (reads from the repository)
     private void showRecommendations() {
         RecommendationView view = new RecommendationView();
-        view.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        new RecommendationController(
-                view,
-                currentUser,
-                this::showPreferences,
-                this::logout);
+        view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        new RecommendationController(view);
         view.setVisible(true);
+    }
+
+    // Review button (destination header): reviews of the destination being viewed,
+    // shown directly below its header
+    private void showReviews() {
+        if (selectedDestination == null) {
+            return;
+        }
+        level = Level.REVIEW;
+        reviewView.setDestination(selectedDestination.getName());
+        explore.showReviews(selectedDestination, selectedCategory, reviewView);
+        homeView.showExplorePage();
     }
 
     // Region cards show how many destinations they contain
