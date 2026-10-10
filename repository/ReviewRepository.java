@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class ReviewRepository {
@@ -43,16 +42,30 @@ public class ReviewRepository {
     }
 
     public void save(ReviewModel review) throws IOException {
-        String line = String.join("\t",
-                escape(review.getReviewId()),
-                escape(review.getUserId()),
-                escape(review.getDestinationName()),
-                String.valueOf(review.getRating()),
-                escape(review.getTitle()),
-                escape(review.getComment()),
-                escape(review.getCreatedDate()));
-        Files.write(SAVE_FILE, Collections.singletonList(line), StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        List<String> lines = Files.exists(SAVE_FILE)
+                ? new ArrayList<>(Files.readAllLines(SAVE_FILE, StandardCharsets.UTF_8))
+                : new ArrayList<>();
+        List<String> updatedLines = new ArrayList<>();
+        boolean replaced = false;
+
+        for (String line : lines) {
+            ReviewModel existing = parseReview(line);
+            if (existing != null && sameReviewOwner(existing, review)) {
+                if (!replaced) {
+                    updatedLines.add(serialize(review));
+                    replaced = true;
+                }
+            } else {
+                updatedLines.add(line);
+            }
+        }
+
+        if (!replaced) {
+            updatedLines.add(serialize(review));
+        }
+        Files.write(SAVE_FILE, updatedLines, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE);
     }
 
     public int getReviewCount(String destinationName) {
@@ -71,13 +84,29 @@ public class ReviewRepository {
         return total / reviews.size();
     }
 
-    public boolean hasReview(String userId, String destinationName) {
+    public boolean hasReview(String accountName, String destinationName) {
         for (ReviewModel review : findByDestination(destinationName)) {
-            if (review.getUserId().equals(userId)) {
+            if (review.getAccountName().equalsIgnoreCase(accountName)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean sameReviewOwner(ReviewModel first, ReviewModel second) {
+        return first.getAccountName().equalsIgnoreCase(second.getAccountName())
+                && first.getDestinationName().equalsIgnoreCase(second.getDestinationName());
+    }
+
+    private String serialize(ReviewModel review) {
+        return String.join("\t",
+                escape(review.getReviewId()),
+                escape(review.getAccountName()),
+                escape(review.getDestinationName()),
+                String.valueOf(review.getRating()),
+                escape(review.getTitle()),
+                escape(review.getComment()),
+                escape(review.getCreatedDate()));
     }
 
     private ReviewModel parseReview(String line) {

@@ -263,7 +263,6 @@ public class RecommendationView extends JFrame {
         c.gridy = 1;
         c.insets = new Insets(0, 0, 0, 0);
         buttons.add(btnBackToDestinations, c);
-        buttons.setPreferredSize(new Dimension(190, 10));
         activityPanel.add(buttons, BorderLayout.EAST);
 
         activityPanel.setVisible(true);
@@ -310,7 +309,7 @@ public class RecommendationView extends JFrame {
 
         JPanel page = new JPanel(new BorderLayout());
         page.setBackground(BACKGROUND);
-        JPanel detailContent = new JPanel();
+        ScrollPanel detailContent = new ScrollPanel(new BorderLayout());
         detailContent.setLayout(new BoxLayout(detailContent, BoxLayout.Y_AXIS));
         detailContent.setBackground(BACKGROUND);
         detailContent.setBorder(new EmptyBorder(22, 30, 32, 30));
@@ -318,6 +317,7 @@ public class RecommendationView extends JFrame {
         HeroPanel hero = new HeroPanel(loadDestinationImage(d, cat));
         hero.setLayout(new BorderLayout());
         hero.setPreferredSize(new Dimension(900, 245));
+        hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 245));
         hero.setMinimumSize(new Dimension(500, 210));
         JPanel heroText = new JPanel();
         heroText.setOpaque(false);
@@ -345,11 +345,12 @@ public class RecommendationView extends JFrame {
         ratingRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         detailContent.add(ratingRow);
         detailContent.add(Box.createVerticalStrut(12));
-        detailContent.add(left(text(d.getDescription(), 1050, 15, TEXT_DARK, false)));
+        JLabel description = text(d.getDescription(), 900, 15, TEXT_DARK, false);
+        detailContent.add(left(description));
         detailContent.add(Box.createVerticalStrut(22));
 
         addSectionHeading(detailContent, "Recommended Places");
-        JPanel placesRow = new JPanel(new GridLayout(1, 3, 16, 0));
+        JPanel placesRow = new JPanel(new GridLayout(0, 3, 16, 12));
         placesRow.setOpaque(false);
         List<String> places = d.getPlaces();
         for (int i = 0; i < 3; i++) {
@@ -361,19 +362,19 @@ public class RecommendationView extends JFrame {
             placesRow.add(createInfoCard(placeName, placeDescription, false));
         }
         placesRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        placesRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+        placesRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         detailContent.add(placesRow);
         detailContent.add(Box.createVerticalStrut(22));
 
         addSectionHeading(detailContent, "Travel Information");
-        JPanel infoRow = new JPanel(new GridLayout(1, 4, 14, 0));
+        JPanel infoRow = new JPanel(new GridLayout(0, 4, 14, 12));
         infoRow.setOpaque(false);
         infoRow.add(createMetricCard("BEST TIME TO VISIT", nz(d.getBestTime())));
         infoRow.add(createMetricCard("RECOMMENDED DURATION", nz(d.getDuration())));
         infoRow.add(createMetricCard("ESTIMATED BUDGET", nz(d.getBudget())));
         infoRow.add(createMetricCard("DIFFICULTY", nz(d.getDifficulty())));
         infoRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        infoRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 112));
+        infoRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         detailContent.add(infoRow);
         detailContent.add(Box.createVerticalStrut(22));
 
@@ -384,6 +385,7 @@ public class RecommendationView extends JFrame {
         adviceRow.add(createListCard("Travel Tips", tips));
         adviceRow.add(createListCard("What to Bring", bring));
         adviceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        adviceRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         detailContent.add(adviceRow);
 
         JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -393,19 +395,26 @@ public class RecommendationView extends JFrame {
         bottomActions.setAlignmentX(Component.LEFT_ALIGNMENT);
         detailContent.add(bottomActions);
 
-        JPanel wrap = new JPanel(new BorderLayout());
-        wrap.setBackground(BACKGROUND);
-        wrap.add(detailContent, BorderLayout.NORTH);
-        detailsScroll = new JScrollPane(wrap);
+        detailsScroll = new JScrollPane(detailContent);
         detailsScroll.setBorder(null);
         detailsScroll.getViewport().setBackground(BACKGROUND);
         detailsScroll.getVerticalScrollBar().setUnitIncrement(16);
         detailsScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        detailsScroll.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                updateDetailLayout(detailsScroll.getViewport().getWidth(), description,
+                        d.getDescription(), placesRow, infoRow, adviceRow);
+            }
+        });
         if (rootCards.getComponentCount() > 1) rootCards.remove(1);
         rootCards.add(detailsScroll, "DETAILS");
         ((CardLayout) rootCards.getLayout()).show(rootCards, "DETAILS");
         detailsScroll.getViewport().setViewPosition(new Point(0, 0));
         refresh(rootCards);
+        SwingUtilities.invokeLater(() -> updateDetailLayout(
+                detailsScroll.getViewport().getWidth(), description, d.getDescription(),
+                placesRow, infoRow, adviceRow));
     }
 
     private void showRecommendationsPage() {
@@ -419,6 +428,29 @@ public class RecommendationView extends JFrame {
         parent.add(left(heading));
     }
 
+    private void updateDetailLayout(int viewportWidth, JLabel description, String descriptionText,
+                                    JPanel placesRow, JPanel infoRow, JPanel adviceRow) {
+        int availableWidth = Math.max(150, viewportWidth - 60);
+        setWrappedLabelWidth(description, descriptionText, availableWidth);
+        placesRow.setLayout(new GridLayout(0, responsiveColumns(availableWidth, 280, 16, 3), 16, 12));
+        infoRow.setLayout(new GridLayout(0, responsiveColumns(availableWidth, 190, 14, 4), 14, 12));
+        adviceRow.setLayout(new GridLayout(0, responsiveColumns(availableWidth, 360, 16, 2), 16, 12));
+        placesRow.revalidate();
+        infoRow.revalidate();
+        adviceRow.revalidate();
+    }
+
+    private static int responsiveColumns(int availableWidth, int minCellWidth,
+                                         int horizontalGap, int maxColumns) {
+        int fittingColumns = (availableWidth + horizontalGap) / (minCellWidth + horizontalGap);
+        return Math.max(1, Math.min(maxColumns, fittingColumns));
+    }
+
+    private static void setWrappedLabelWidth(JLabel label, String value, int width) {
+        label.setText("<html><body style='width:" + width + "px'>"
+                + esc(value) + "</body></html>");
+    }
+
     private JPanel createInfoCard(String title, String description, boolean metric) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
@@ -426,7 +458,7 @@ public class RecommendationView extends JFrame {
         card.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1, true), new EmptyBorder(16, 17, 16, 17)));
         card.add(left(label(title, 15, true, TEXT_DARK)));
         card.add(Box.createVerticalStrut(8));
-        card.add(left(text(description, 250, 13, TEXT_MUTED, false)));
+        card.add(left(text(description, 210, 13, TEXT_MUTED, false)));
         return card;
     }
 
@@ -437,7 +469,7 @@ public class RecommendationView extends JFrame {
         card.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1, true), new EmptyBorder(15, 15, 15, 15)));
         card.add(left(label(heading, 10, true, TEXT_MUTED)));
         card.add(Box.createVerticalStrut(10));
-        card.add(left(text(value, 190, 15, TEXT_DARK, true)));
+        card.add(left(text(value, 145, 15, TEXT_DARK, true)));
         return card;
     }
 
@@ -449,7 +481,7 @@ public class RecommendationView extends JFrame {
         card.add(left(label(heading, 19, true, TEXT_DARK)));
         card.add(Box.createVerticalStrut(12));
         for (String item : items) {
-            JLabel bullet = text("•  " + item, 480, 13, TEXT_MUTED, false);
+            JLabel bullet = text("•  " + item, 320, 13, TEXT_MUTED, false);
             bullet.setBorder(new EmptyBorder(0, 0, 8, 0));
             card.add(left(bullet));
         }

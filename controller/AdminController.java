@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AdminController {
+    private static final int MAX_TEXT_LENGTH = 255;
+
     private final AdminView adminView;
     private final DestinationRepository destinationRepository;
     private final Runnable onClose;
@@ -56,16 +58,28 @@ public class AdminController {
             String fee = adminView.getFee();
             String category = adminView.getCategory();
             String description = adminView.getDescription();
-            List<String> travelTips = parseItems(adminView.getTravelTips());
-            List<String> whatToBring = parseItems(adminView.getWhatToBring());
-            List<String> recommendedPlaces = parseItems(adminView.getRecommendedPlaces());
+            List<String> travelTips;
+            List<String> whatToBring;
+            List<String> recommendedPlaces;
 
-            if (name.trim().isEmpty() || location.trim().isEmpty()
-                    || description.trim().isEmpty() || !adminView.hasSelectedChoices()
-                    || region == null || season == null || duration == null || difficulty == null
-                    || fee.trim().isEmpty() || category == null || travelTips.isEmpty()
-                    || whatToBring.isEmpty() || recommendedPlaces.isEmpty()) {
+            if (!adminView.hasSelectedChoices()) {
                 adminView.showMessage("⚠️ Please fill in all fields before adding a destination.");
+                return;
+            }
+            if (!adminView.hasValidMonthRange()) {
+                adminView.showMessage("The end month must be later than the start month.");
+                return;
+            }
+
+            try {
+                travelTips = parseItems(adminView.getTravelTips(), "Travel tips");
+                whatToBring = parseItems(adminView.getWhatToBring(), "What to bring");
+                recommendedPlaces = parseItems(adminView.getRecommendedPlaces(),
+                        "Recommended places");
+                validateAdminInput(name, location, description, region, category, season,
+                        duration, difficulty, fee, travelTips, whatToBring, recommendedPlaces);
+            } catch (IllegalArgumentException exception) {
+                adminView.showMessage(exception.getMessage());
                 return;
             }
 
@@ -102,10 +116,81 @@ public class AdminController {
         }
     }
 
-    private static List<String> parseItems(String text) {
+    private static void validateAdminInput(String name, String location, String description,
+                                          String region, String category, String season,
+                                          String duration, String difficulty, String fee,
+                                          List<String> travelTips, List<String> whatToBring,
+                                          List<String> recommendedPlaces) {
+        if (!isValidNameOrLocation(name)) {
+            throw new IllegalArgumentException(
+                    "Destination name must contain only letters, spaces, and punctuation "
+                            + "and be no longer than "
+                            + MAX_TEXT_LENGTH + " characters.");
+        }
+        if (!isValidNameOrLocation(location)) {
+            throw new IllegalArgumentException(
+                    "Location must contain only letters, spaces, and punctuation "
+                            + "and be no longer than "
+                            + MAX_TEXT_LENGTH + " characters.");
+        }
+        requireText("Description", description);
+        requireText("Region", region);
+        requireText("Category", category);
+        requireText("Best time", season);
+        requireText("Duration", duration);
+        requireText("Difficulty", difficulty);
+        requireText("Fee", fee);
+        requireTextList("Travel tips", travelTips);
+        requireTextList("What to bring", whatToBring);
+        requireTextList("Recommended places", recommendedPlaces);
+    }
+
+    private static boolean isValidNameOrLocation(String value) {
+        if (!isValidText(value) || value.codePoints().noneMatch(Character::isLetter)) {
+            return false;
+        }
+        return value.codePoints().allMatch(codePoint -> Character.isLetter(codePoint)
+                || codePoint == ' '
+                || Character.getType(codePoint) == Character.NON_SPACING_MARK
+                || Character.getType(codePoint) == Character.COMBINING_SPACING_MARK
+                || Character.getType(codePoint) == Character.ENCLOSING_MARK
+                || Character.getType(codePoint) == Character.CONNECTOR_PUNCTUATION
+                || Character.getType(codePoint) == Character.DASH_PUNCTUATION
+                || Character.getType(codePoint) == Character.START_PUNCTUATION
+                || Character.getType(codePoint) == Character.END_PUNCTUATION
+                || Character.getType(codePoint) == Character.INITIAL_QUOTE_PUNCTUATION
+                || Character.getType(codePoint) == Character.FINAL_QUOTE_PUNCTUATION
+                || Character.getType(codePoint) == Character.OTHER_PUNCTUATION);
+    }
+
+    private static boolean isValidText(String value) {
+        return value != null && !value.isBlank()
+                && value.codePointCount(0, value.length()) <= MAX_TEXT_LENGTH;
+    }
+
+    private static void requireText(String field, String value) {
+        if (!isValidText(value)) {
+            throw new IllegalArgumentException(field + " must be nonblank and no longer than "
+                    + MAX_TEXT_LENGTH + " characters.");
+        }
+    }
+
+    private static void requireTextList(String field, List<String> values) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException(field + " cannot be blank.");
+        }
+        for (String value : values) {
+            requireText(field, value);
+        }
+    }
+
+    private static List<String> parseItems(String text, String field) {
+        if (text == null) {
+            throw new IllegalArgumentException(field + " cannot be blank");
+        }
         List<String> items = new ArrayList<>();
         for (String line : text.split("\\R")) {
-            String item = line.trim();
+            String item = line.strip();
             if (!item.isEmpty()) {
                 items.add(item);
             }

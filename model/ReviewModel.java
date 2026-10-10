@@ -3,16 +3,16 @@ package model;
     public class ReviewModel {
 
         private final String reviewId;
-        private final String userId;
+        private final String accountName;
         private final String destinationName;
         private final int rating;
         private final String title;
         private final String comment;
         private final String createdDate;
 
-        public ReviewModel(String reviewId, String userId, String destinationName, int rating, String title, String comment, String createdDate) {
+        public ReviewModel(String reviewId, String accountName, String destinationName, int rating, String title, String comment, String createdDate) {
             this.reviewId = reviewId;
-            this.userId = userId;
+            this.accountName = accountName;
             this.destinationName = destinationName;
             this.rating = rating;
             this.title = title;
@@ -24,8 +24,8 @@ package model;
             return reviewId;
         }
 
-        public String getUserId() {
-            return userId;
+        public String getAccountName() {
+            return accountName;
         }
 
         public String getDestinationName() {

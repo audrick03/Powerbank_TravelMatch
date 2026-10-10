@@ -89,7 +89,7 @@ public class RecommendationController {
     private void openReviews(DestinationModel destination) {
         reviewController.reload();
         reviewView.setDestination(destination.getName());
-        reviewView.setAuthenticated(currentUser != null);
+        reviewController.setCurrentUser(currentUser);
         if (reviewFrame == null || !reviewFrame.isDisplayable()) {
             reviewFrame = new JFrame("TravelMatch - Reviews");
             reviewFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);

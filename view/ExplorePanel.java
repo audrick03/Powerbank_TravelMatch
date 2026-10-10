@@ -72,7 +72,7 @@ public class ExplorePanel extends JPanel {
 
     // detail page (the Review button lives in its header, so it only shows here)
     private final JButton btnReview = new PillButton("Review", PRIMARY, PRIMARY_LIGHT, Color.WHITE, null);
-    private final JPanel detailContent = new JPanel();
+    private final ViewportWidthPanel detailContent = new ViewportWidthPanel(new BorderLayout());
     private JScrollPane detailScroll;
 
     // review page: destination header + the review panel directly below it
@@ -94,10 +94,9 @@ public class ExplorePanel extends JPanel {
 
         detailContent.setLayout(new BoxLayout(detailContent, BoxLayout.Y_AXIS));
         detailContent.setBackground(BACKGROUND);
-        JPanel detailWrap = new JPanel(new BorderLayout());
-        detailWrap.setBackground(BACKGROUND);
-        detailWrap.add(detailContent, BorderLayout.NORTH);
-        detailScroll = wrap(detailWrap);
+        detailContent.setLayout(new BoxLayout(detailContent, BoxLayout.Y_AXIS));
+        detailContent.setBackground(BACKGROUND);
+        detailScroll = wrap(detailContent);
 
         reviewContent.setLayout(new BoxLayout(reviewContent, BoxLayout.Y_AXIS));
         reviewContent.setBackground(BACKGROUND);
@@ -112,11 +111,12 @@ public class ExplorePanel extends JPanel {
         pages.add(reviewScroll, PAGE_REVIEW);
         add(pages, BorderLayout.CENTER);
         addComponentListener(new ComponentAdapter() {
-        @Override
-        public void componentResized(ComponentEvent e) {
-        updateResponsiveLayout();
-        }
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateResponsiveLayout();
+            }
         });
+        updateResponsiveLayout();
     }
 
     // =========================================================
@@ -138,6 +138,7 @@ public class ExplorePanel extends JPanel {
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
             catGrid.add(createCategoryCard(e.getKey(), e.getValue()));
         }
+        updateResponsiveLayout();
         refresh(catGrid);
         layout.show(pages, PAGE_CATEGORIES);
         toTop(catScroll);
@@ -163,6 +164,7 @@ public class ExplorePanel extends JPanel {
         for (DestinationModel d : list) {
             listGrid.add(createDestinationCard(d, category));
         }
+        updateResponsiveLayout();
         refresh(listGrid);
         layout.show(pages, PAGE_LIST);
         toTop(listScroll);
@@ -183,6 +185,7 @@ public class ExplorePanel extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(BACKGROUND);
         body.setBorder(new EmptyBorder(20, 30, 0, 30));
+        body.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
         // score + description
         JPanel scoreRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
@@ -190,11 +193,10 @@ public class ExplorePanel extends JPanel {
         double rating = reviewRepository.getAverageRating(d.getName());
         int reviewCount = reviewRepository.getReviewCount(d.getName());
         String ratingText;
-        if(reviewCount == 0){
-
+        if (reviewCount == 0) {
             ratingText = "User Reviews: 0/5";
-        }else{
-            ratingText = String.format("User Reviews: %.1f/%d", rating, reviewCount);
+        } else {
+            ratingText = String.format(java.util.Locale.US, "User Reviews: %.1f/5 (%d)", rating, reviewCount);
         }
         scoreRow.add(createRatingBadge(ratingText));
         if (reviewCount == 0) {
@@ -204,7 +206,8 @@ public class ExplorePanel extends JPanel {
         }
         body.add(left(scoreRow));
         body.add(Box.createVerticalStrut(10));
-        body.add(left(text(d.getDescription(), 900, 16, TEXT_DARK, false)));
+        JLabel description = text(d.getDescription(), 900, 16, TEXT_DARK, false);
+        body.add(left(description));
 
         // Recommended places
         body.add(Box.createVerticalStrut(24));
@@ -215,31 +218,48 @@ public class ExplorePanel extends JPanel {
         for (String place : d.getPlaces()) {
             placeGrid.add(createPlaceCard(place));
         }
+        placeGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         body.add(left(placeGrid));
 
         // Travel information
         body.add(Box.createVerticalStrut(24));
         body.add(left(sectionTitle("Travel Information")));
         body.add(Box.createVerticalStrut(10));
-        JPanel info = new JPanel(new GridLayout(1, 4, 18, 0));
+        JPanel info = new JPanel(new GridLayout(0, 4, 18, 12));
         info.setOpaque(false);
         info.add(infoBox("Best Time to Visit", d.getBestTime()));
         info.add(infoBox("Recommended Duration", d.getDuration()));
         info.add(infoBox("Estimated Budget", d.getBudget()));
         info.add(infoBox("Difficulty", d.getDifficulty()));
+        info.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         body.add(left(info));
 
         body.add(Box.createVerticalStrut(18));
-        JPanel lists = new JPanel(new GridLayout(1, 2, 18, 0));
+        JPanel lists = new JPanel(new GridLayout(0, 2, 18, 12));
         lists.setOpaque(false);
-        lists.add(listBox("Travel Tips", DestinationRepository.travelTips(cat)));
-        lists.add(listBox("What to Bring", DestinationRepository.whatToBring(cat)));
+        List<String> travelTips = d.getTravelTips().isEmpty()
+                ? DestinationRepository.travelTips(cat) : d.getTravelTips();
+        List<String> whatToBring = d.getWhatToBring().isEmpty()
+                ? DestinationRepository.whatToBring(cat) : d.getWhatToBring();
+        lists.add(listBox("Travel Tips", travelTips));
+        lists.add(listBox("What to Bring", whatToBring));
+        lists.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         body.add(left(lists));
 
         detailContent.add(left(body));
+        detailScroll.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                updateDetailLayout(detailScroll.getViewport().getWidth(), description,
+                        d.getDescription(), placeGrid, info, lists);
+            }
+        });
         refresh(detailContent);
         layout.show(pages, PAGE_DETAIL);
         toTop(detailScroll);
+        SwingUtilities.invokeLater(() -> updateDetailLayout(
+                detailScroll.getViewport().getWidth(), description, d.getDescription(),
+                placeGrid, info, lists));
     }
 
     /** DESTINATION -> its reviews, shown directly below the destination header. */
@@ -345,7 +365,7 @@ public class ExplorePanel extends JPanel {
 
     private JPanel createCategoryCard(String category, int count) {
         JPanel card = baseCard();
-        card.setPreferredSize(new Dimension(200, 300));
+        card.setPreferredSize(new Dimension(220, 300));
 
         CoverPanel photo = new CoverPanel(loadImage(category), null);
         photo.setPreferredSize(new Dimension(200, 190));
@@ -357,12 +377,19 @@ public class ExplorePanel extends JPanel {
 
         info.add(left(label(DestinationRepository.label(category), 20, true, TEXT_DARK)));
         info.add(Box.createVerticalStrut(4));
-        info.add(left(text(DestinationRepository.categoryDescription(category), 240, 13, TEXT_MUTED, false)));
+        JLabel description = text(DestinationRepository.categoryDescription(category), 200, 13, TEXT_MUTED, false);
+        info.add(left(description));
         info.add(Box.createVerticalStrut(6));
         info.add(left(label(count + (count == 1 ? " destination" : " destinations"), 13, true, PRIMARY)));
 
         card.add(photo, BorderLayout.CENTER);
         card.add(info, BorderLayout.SOUTH);
+        card.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent event) {
+                setWrappedLabelWidth(description, DestinationRepository.categoryDescription(category),
+                        Math.max(100, info.getWidth() - 32));
+            }
+        });
 
         makeClickable(card, () -> categoryListener.accept(category));
         return card;
@@ -370,7 +397,7 @@ public class ExplorePanel extends JPanel {
 
     private JPanel createDestinationCard(DestinationModel d, String category) {
         JPanel card = baseCard();
-        card.setPreferredSize(new Dimension(200, 350));
+        card.setPreferredSize(new Dimension(220, 350));
 
         String firstCat = d.getCategories().get(0);
         CoverPanel photo = new CoverPanel(loadDestinationImage(d, firstCat), null);
@@ -381,11 +408,13 @@ public class ExplorePanel extends JPanel {
         info.setBackground(Color.WHITE);
         info.setBorder(new EmptyBorder(12, 16, 14, 16));
 
-        info.add(left(text(d.getName(), 240, 17, TEXT_DARK, true)));
+        JLabel name = text(d.getName(), 200, 17, TEXT_DARK, true);
+        info.add(left(name));
         info.add(Box.createVerticalStrut(2));
         info.add(left(label("" + d.getProvince(), 13, false, TEXT_MUTED)));
         info.add(Box.createVerticalStrut(8));
-        info.add(left(text(d.getDescription(), 240, 13, TEXT_DARK, false)));
+        JLabel description = text(d.getDescription(), 200, 13, TEXT_DARK, false);
+        info.add(left(description));
         info.add(Box.createVerticalStrut(8));
 
         JPanel badges = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
@@ -401,6 +430,13 @@ public class ExplorePanel extends JPanel {
 
         card.add(photo, BorderLayout.NORTH);
         card.add(info, BorderLayout.CENTER);
+        card.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent event) {
+                int textWidth = Math.max(100, info.getWidth() - 32);
+                setWrappedLabelWidth(name, d.getName(), textWidth);
+                setWrappedLabelWidth(description, d.getDescription(), textWidth);
+            }
+        });
 
         makeClickable(card, () -> destinationListener.accept(d));
         return card;
@@ -421,10 +457,25 @@ public class ExplorePanel extends JPanel {
         placePhoto.setVisible(placeImg != null);
         card.add(left(placePhoto));
         card.add(Box.createVerticalStrut(4));
-        card.add(left(text(parts[0], 220, 16, TEXT_DARK, true)));
+        JLabel name = text(parts[0], 190, 16, TEXT_DARK, true);
+        card.add(left(name));
         if (parts.length > 1) {
             card.add(Box.createVerticalStrut(4));
-            card.add(left(text(parts[1], 220, 13, TEXT_MUTED, false)));
+            JLabel description = text(parts[1], 190, 13, TEXT_MUTED, false);
+            card.add(left(description));
+            card.addComponentListener(new ComponentAdapter() {
+                @Override public void componentResized(ComponentEvent event) {
+                    int textWidth = Math.max(100, card.getWidth() - 32);
+                    setWrappedLabelWidth(name, parts[0], textWidth);
+                    setWrappedLabelWidth(description, parts[1], textWidth);
+                }
+            });
+        } else {
+            card.addComponentListener(new ComponentAdapter() {
+                @Override public void componentResized(ComponentEvent event) {
+                    setWrappedLabelWidth(name, parts[0], Math.max(100, card.getWidth() - 32));
+                }
+            });
         }
         return card;
     }
@@ -465,7 +516,14 @@ public class ExplorePanel extends JPanel {
         box.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1), new EmptyBorder(12, 16, 12, 16)));
         box.add(left(label(title, 12, true, TEXT_MUTED)));
         box.add(Box.createVerticalStrut(4));
-        box.add(left(text(value == null ? "—" : value, 200, 15, TEXT_DARK, true)));
+        String displayValue = value == null ? "—" : value;
+        JLabel valueLabel = text(displayValue, 140, 15, TEXT_DARK, true);
+        box.add(left(valueLabel));
+        box.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent event) {
+                setWrappedLabelWidth(valueLabel, displayValue, Math.max(100, box.getWidth() - 32));
+            }
+        });
         return box;
     }
 
@@ -476,9 +534,20 @@ public class ExplorePanel extends JPanel {
         box.setBorder(new CompoundBorder(new LineBorder(BORDER_LIGHT, 1), new EmptyBorder(14, 18, 14, 18)));
         box.add(left(label(title, 16, true, TEXT_DARK)));
         box.add(Box.createVerticalStrut(6));
+        java.util.ArrayList<JLabel> itemLabels = new java.util.ArrayList<>();
         for (String item : items) {
-            box.add(left(text("• " + item, 420, 14, TEXT_DARK, false)));
+            JLabel itemLabel = text("• " + item, 300, 14, TEXT_DARK, false);
+            itemLabels.add(itemLabel);
+            box.add(left(itemLabel));
         }
+        box.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent event) {
+                int width = Math.max(100, box.getWidth() - 36);
+                for (int i = 0; i < itemLabels.size(); i++) {
+                    setWrappedLabelWidth(itemLabels.get(i), "• " + items.get(i), width);
+                }
+            }
+        });
         return box;
     }
 
@@ -625,33 +694,41 @@ public class ExplorePanel extends JPanel {
         }
     }
 
-    private int getResponsiveColumns() {
-
-    int width = getWidth();
-
-    if(width >= 1200)
-        return 3;
-
-    if(width >= 768)
-        return 2;
-
-    return 1;
+    private int getResponsiveColumns(JScrollPane scroll) {
+        int width = Math.max(0, scroll.getViewport().getWidth() - 60);
+        return Math.max(1, Math.min(5, (width + 22) / 242));
     }
 
     private void updateResponsiveLayout() {
+        catGrid.setLayout(new GridLayout(0, getResponsiveColumns(catScroll), 22, 22));
+        listGrid.setLayout(new GridLayout(0, getResponsiveColumns(listScroll), 22, 22));
+        revalidate();
+        repaint();
+    }
 
-    int cols = getResponsiveColumns();
+    private void updateDetailLayout(int viewportWidth, JLabel description, String descriptionText,
+                                    JPanel placeGrid, JPanel info, JPanel lists) {
+        int availableWidth = Math.max(150, viewportWidth - 60);
+        setWrappedLabelWidth(description, descriptionText, availableWidth);
+        placeGrid.setLayout(new GridLayout(0, responsiveColumns(availableWidth, 230, 18, 3), 18, 18));
+        info.setLayout(new GridLayout(0, responsiveColumns(availableWidth, 180, 18, 4), 18, 12));
+        lists.setLayout(new GridLayout(0, responsiveColumns(availableWidth, 340, 18, 2), 18, 12));
+        placeGrid.setMaximumSize(new Dimension(availableWidth, Integer.MAX_VALUE));
+        info.setMaximumSize(new Dimension(availableWidth, Integer.MAX_VALUE));
+        lists.setMaximumSize(new Dimension(availableWidth, Integer.MAX_VALUE));
+        placeGrid.revalidate();
+        info.revalidate();
+        lists.revalidate();
+    }
 
-    catGrid.setLayout(
-        new GridLayout(0, cols, 22, 22)
-    );
+    private static int responsiveColumns(int availableWidth, int minCellWidth,
+                                         int gap, int maxColumns) {
+        return Math.max(1, Math.min(maxColumns, (availableWidth + gap) / (minCellWidth + gap)));
+    }
 
-    listGrid.setLayout(
-        new GridLayout(0, cols, 22, 22)
-    );
-
-    revalidate();
-    repaint();
+    private static void setWrappedLabelWidth(JLabel label, String value, int width) {
+        label.setText("<html><body style='width:" + width + "px'>"
+                + esc(value) + "</body></html>");
     }
 
     // =========================================================

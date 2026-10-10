@@ -275,7 +275,7 @@ public class HomeController {
     private void confirmPreferenceChange() {
         int choice = JOptionPane.showConfirmDialog(
                 homeView,
-                "Do you want to change your saved travel preferences?",
+                "Do you want to add/change your saved travel preferences?",
                 "Change Preferences",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
@@ -361,7 +361,7 @@ public class HomeController {
         level = Level.REVIEW;
         reviewController.reload();
         reviewView.setDestination(selectedDestination.getName());
-        reviewView.setAuthenticated(currentUser != null);
+        reviewController.setCurrentUser(currentUser);
         explore.showReviews(selectedDestination, selectedCategory, reviewView);
         homeView.showExplorePage();
     }

@@ -12,6 +12,7 @@ import java.util.Map;
  * so every destination carries its OWN activity list (never shared).
  */
 public class DestinationModel {
+    private static final int MAX_TEXT_LENGTH = 255;
 
     private String name;
     private String province;
@@ -75,43 +76,73 @@ public class DestinationModel {
 
     public void setTravelInfo(String bestTime, String duration,
                               String difficulty, String budget) {
-        this.bestTime = bestTime;
-        this.duration = duration;
-        this.difficulty = difficulty;
-        this.budget = budget;
+        String validatedBestTime = requireText("Best time", bestTime);
+        String validatedDuration = requireText("Duration", duration);
+        String validatedDifficulty = requireText("Difficulty", difficulty);
+        String validatedBudget = requireText("Budget", budget);
+        this.bestTime = validatedBestTime;
+        this.duration = validatedDuration;
+        this.difficulty = validatedDifficulty;
+        this.budget = validatedBudget;
     }
 
     public void setTravelTips(List<String> tips) {
+        List<String> validatedTips = requireTextList("Travel tips", tips);
         travelTips.clear();
-        if (tips != null) {
-            travelTips.addAll(tips);
-        }
+        travelTips.addAll(validatedTips);
     }
 
     public void setWhatToBring(List<String> items) {
+        List<String> validatedItems = requireTextList("What to bring", items);
         whatToBring.clear();
-        if (items != null) {
-            whatToBring.addAll(items);
-        }
+        whatToBring.addAll(validatedItems);
     }
 
     public void setCategories(List<String> list) {
+        List<String> validatedCategories = requireTextList("Categories", list);
         categories.clear();
-        categories.addAll(list);
+        categories.addAll(validatedCategories);
     }
 
     public void setActivities(List<String> list) {
+        List<String> validatedActivities = requireTextList("Activities", list);
         activities.clear();
-        activities.addAll(list);
+        activities.addAll(validatedActivities);
     }
 
     public void setActivities(String category, List<String> list) {
-        categoryActivities.put(category, new ArrayList<>(list));
+        String validatedCategory = requireText("Activity category", category);
+        List<String> validatedActivities = requireTextList("Activities", list);
+        categoryActivities.put(validatedCategory, validatedActivities);
     }
 
     public void setPlaces(List<String> list) {
+        List<String> validatedPlaces = requireTextList("Places", list);
         places.clear();
-        places.addAll(list);
+        places.addAll(validatedPlaces);
+    }
+
+    private static String requireText(String field, String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(field + " cannot be blank");
+        }
+        if (value.codePointCount(0, value.length()) > MAX_TEXT_LENGTH) {
+            throw new IllegalArgumentException(field + " cannot exceed "
+                    + MAX_TEXT_LENGTH + " characters");
+        }
+        return value;
+    }
+
+    private static List<String> requireTextList(String field, List<String> values) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException(field + " cannot be empty");
+        }
+
+        List<String> validated = new ArrayList<>(values.size());
+        for (int index = 0; index < values.size(); index++) {
+            validated.add(requireText(field + " item " + (index + 1), values.get(index)));
+        }
+        return validated;
     }
 
     @Override

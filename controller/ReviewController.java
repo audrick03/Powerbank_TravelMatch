@@ -1,9 +1,11 @@
 package controller;
 
 import model.ReviewModel;
+import model.UserModel;
 import repository.ReviewRepository;
 import view.ReviewView;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +16,7 @@ public class ReviewController {
 
     private final ReviewView view;
     private final ReviewRepository repository;
+    private String accountName;
 
     public ReviewController(ReviewView view) {
         this.view = view;
@@ -23,17 +26,22 @@ public class ReviewController {
         view.setReviewSubmitListener(this::saveReview);
     }
 
-    private void saveReview(String author, String destination, int rating,
+    public void setCurrentUser(UserModel user) {
+        accountName = user == null ? null : user.getUsername();
+        view.setAccountName(accountName);
+    }
+
+    private boolean saveReview(String destination, int rating,
                             String title, String comment) {
-        if (!view.isAuthenticated()) {
+        if (accountName == null || accountName.trim().isEmpty()) {
             view.showMessage("Please log in to write a review.");
-            return;
+            return false;
         }
 
         try {
             ReviewModel review = new ReviewModel(
                     UUID.randomUUID().toString(),
-                    author,
+                    accountName,
                     destination,
                     rating,
                     title,
@@ -42,8 +50,10 @@ public class ReviewController {
                             .format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)));
 
             repository.save(review);
-        } catch (Exception ex) {
+            return true;
+        } catch (IOException ex) {
             view.showMessage("Unable to save review:\n" + ex.getMessage());
+            return false;
         }
     }
 
@@ -56,7 +66,7 @@ public class ReviewController {
     private void loadSavedReviews() {
         for (ReviewModel review : repository.findAll()) {
             view.addLoadedReview(
-                    review.getUserId(),
+                    review.getAccountName(),
                     review.getDestinationName(),
                     review.getRating(),
                     review.getTitle(),

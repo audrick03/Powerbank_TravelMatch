@@ -25,24 +25,37 @@ import java.util.Locale;
  * with setDestination(). Only that destination's reviews are listed.
  */
 public class ReviewView extends JPanel {
-    private boolean authenticated;
+    private String accountName;
     private JButton btnWriteReview;
     private JButton btnLoginPrompt;
 
-    public void setAuthenticated(boolean authenticated) {
-        this.authenticated = authenticated;
+    public void setAccountName(String accountName) {
+        this.accountName = accountName == null || accountName.trim().isEmpty()
+                ? null : accountName.trim();
         updateWriteButtons();
     }
 
     private void updateWriteButtons() {
         if (btnWriteReview != null && btnLoginPrompt != null) {
+            boolean authenticated = accountName != null;
             btnWriteReview.setVisible(authenticated);
             btnLoginPrompt.setVisible(!authenticated);
+            btnWriteReview.setText(findAccountReview() == null
+                    ? "✎  Write a review" : "✎  Edit your review");
         }
     }
 
-    public boolean isAuthenticated() {
-        return authenticated;
+    private Review findAccountReview() {
+        if (accountName == null || currentDestination == null) {
+            return null;
+        }
+        for (Review review : reviews) {
+            if (review.destination.equalsIgnoreCase(currentDestination)
+                    && review.author.equalsIgnoreCase(accountName)) {
+                return review;
+            }
+        }
+        return null;
     }
 
     private static final String SANS = "SansSerif";
@@ -87,7 +100,7 @@ public class ReviewView extends JPanel {
 
     /** Lets the controller save a newly written review. */
     public interface ReviewSubmitListener {
-        void onReviewSubmitted(String author, String destination, int rating, String title, String comment);
+        boolean onReviewSubmitted(String destination, int rating, String title, String comment);
     }
 
     private final List<Review> reviews = new ArrayList<>();
@@ -144,7 +157,7 @@ public class ReviewView extends JPanel {
         lblHeading.setFont(new Font(SANS, Font.BOLD, 22));
         lblHeading.setForeground(TEXT_DARK);
 
-        // Both buttons are created once; setAuthenticated() shows the right one,
+        // Both buttons are created once; setAccountName() shows the right one,
         // so logging in after this view was built still works.
         btnWriteReview = createStyledButton("✎  Write a review");
         btnWriteReview.addActionListener(e -> openWriteDialog());
@@ -217,6 +230,7 @@ public class ReviewView extends JPanel {
             lblSummary.setText(String.format("%.1f  ·  %d review%s",
                     avg, shown.size(), shown.size() == 1 ? "" : "s"));
         }
+        updateWriteButtons();
         listPanel.revalidate();
         listPanel.repaint();
     }
@@ -277,21 +291,24 @@ public class ReviewView extends JPanel {
         right.add(comment);
 
         if (longComment) {
-            JLabel more = new JLabel("More");
+            JButton more = new JButton("More");
             more.setFont(new Font(SANS, Font.PLAIN, 14));
             more.setForeground(MID_GREEN);
+            more.setOpaque(false);
+            more.setContentAreaFilled(false);
+            more.setBorderPainted(false);
+            more.setFocusPainted(false);
             more.setCursor(new Cursor(Cursor.HAND_CURSOR));
             more.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+            more.setMargin(new Insets(0, 0, 0, 0));
             more.setAlignmentX(Component.LEFT_ALIGNMENT);
             final boolean[] expanded = {false};
-            more.addMouseListener(new MouseAdapter() {
-                @Override public void mouseClicked(MouseEvent e) {
-                    expanded[0] = !expanded[0];
-                    comment.setText(html(expanded[0] ? r.comment : collapsed, textWidth()));
-                    more.setText(expanded[0] ? "Less" : "More");
-                    listPanel.revalidate();
-                    listPanel.repaint();
-                }
+            more.addActionListener(e -> {
+                expanded[0] = !expanded[0];
+                comment.setText(html(expanded[0] ? r.comment : collapsed, textWidth()));
+                more.setText(expanded[0] ? "Less" : "More");
+                listPanel.revalidate();
+                listPanel.repaint();
             });
             right.add(more);
         }
@@ -341,7 +358,7 @@ public class ReviewView extends JPanel {
     // ---------------------------------------------------------------
     private void openWriteDialog() {
 
-        if (!authenticated) {
+        if (accountName == null) {
             showMessage("Please log in to write a review.");
             return;
         }
@@ -350,7 +367,9 @@ public class ReviewView extends JPanel {
             return;
         }
 
-        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Write a review", Dialog.ModalityType.APPLICATION_MODAL);
+        Review existingReview = findAccountReview();
+        String action = existingReview == null ? "Write a review" : "Edit your review";
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), action, Dialog.ModalityType.APPLICATION_MODAL);
 
         // ---- Green banner ----
         JPanel banner = new JPanel() {
@@ -363,10 +382,12 @@ public class ReviewView extends JPanel {
         };
         banner.setLayout(new BoxLayout(banner, BoxLayout.Y_AXIS));
         banner.setBorder(BorderFactory.createEmptyBorder(16, 28, 16, 28));
-        JLabel bTitle = new JLabel("✎  Write a review");
+        JLabel bTitle = new JLabel("✎  " + action);
         bTitle.setFont(new Font(SANS, Font.BOLD, 22));
         bTitle.setForeground(Color.WHITE);
-        JLabel bSub = new JLabel("Share your experience with other travelers");
+        JLabel bSub = new JLabel(existingReview == null
+                ? "Share your experience with other travelers"
+                : "Update your experience for other travelers");
         bSub.setFont(new Font(SANS, Font.PLAIN, 13));
         bSub.setForeground(new Color(200, 235, 210));
         banner.add(bTitle);
@@ -378,9 +399,6 @@ public class ReviewView extends JPanel {
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
         form.setBackground(Color.WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(20, 28, 8, 28));
-
-        HintTextField nameField = new HintTextField("e.g. Juan Dela Cruz");
-        styleInput(nameField);
 
         JPanel destRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         destRow.setOpaque(false);
@@ -395,6 +413,10 @@ public class ReviewView extends JPanel {
             ratingWord.setText(RATING_WORDS[picker.getRating()]);
             ratingWord.setForeground(DARK_GREEN);
         });
+        if (existingReview != null) {
+            picker.setRating(existingReview.rating);
+            ratingWord.setForeground(DARK_GREEN);
+        }
         JPanel pickerRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         pickerRow.setOpaque(false);
         pickerRow.add(picker);
@@ -403,17 +425,23 @@ public class ReviewView extends JPanel {
 
         HintTextField titleField = new HintTextField("Sum up your visit in a few words");
         styleInput(titleField);
+        if (existingReview != null) {
+            titleField.setText(existingReview.title);
+        }
 
         HintTextArea commentArea = new HintTextArea("What did you love? What should others know?", 4, 30);
         commentArea.setLineWrap(true);
         commentArea.setWrapStyleWord(true);
         styleInput(commentArea);
         ((AbstractDocument) commentArea.getDocument()).setDocumentFilter(new MaxLengthFilter(MAX_COMMENT));
+        if (existingReview != null) {
+            commentArea.setText(existingReview.comment);
+        }
 
         JScrollPane commentScroll = new JScrollPane(commentArea);
         commentScroll.setBorder(null);
 
-        JLabel counter = new JLabel("0 / " + MAX_COMMENT);
+        JLabel counter = new JLabel(commentArea.getText().length() + " / " + MAX_COMMENT);
         counter.setFont(new Font(SANS, Font.PLAIN, 12));
         counter.setForeground(TEXT_MUTED);
         commentArea.getDocument().addDocumentListener(onTextChange(
@@ -433,7 +461,7 @@ public class ReviewView extends JPanel {
         error.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         addField(form, "Destination", destRow);
-        addField(form, "Your name *", nameField);
+        addField(form, "Account name", createChip(accountName));
         addField(form, "Your rating *", pickerRow);
         addField(form, "Review title", titleField);
         addField(form, "Your comment *", commentBlock);
@@ -441,13 +469,13 @@ public class ReviewView extends JPanel {
 
         // ---- Buttons ----
         JButton cancel = createOutlineButton("Cancel");
-        JButton submit = createStyledButton("Submit review");
+        JButton submit = createStyledButton(existingReview == null ? "Submit review" : "Save changes");
         submit.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(MID_GREEN, 2, true),
                 BorderFactory.createEmptyBorder(6, 16, 6, 16)));
         cancel.addActionListener(e -> dlg.dispose());
         submit.addActionListener(e -> {
-            if (submitReview(nameField, picker, titleField, commentArea, error)) {
+            if (submitReview(picker, titleField, commentArea, error)) {
                 dlg.dispose();
             }
         });
@@ -471,22 +499,28 @@ public class ReviewView extends JPanel {
     }
 
     // Validates the form and stores the review. Returns true when the dialog can close.
-    private boolean submitReview(JTextField nameField, StarRating picker,
+    private boolean submitReview(StarRating picker,
                                  JTextField titleField, JTextArea commentArea, JLabel error) {
-        String author = nameField.getText().trim();
         String comment = commentArea.getText().trim();
         int rating = picker.getRating();
-        if (author.isEmpty() || rating == 0 || comment.isEmpty()) {
-            error.setText("⚠  Please fill in your name, star rating, and comment.");
+        if (rating == 0 || comment.isEmpty()) {
+            error.setText("⚠  Please select a star rating and enter a comment.");
             return false;
         }
         String title = titleField.getText().trim();
 
-        reviews.add(0, new Review(author, currentDestination, rating, title, comment));
-        refreshList();
-        if (submitListener != null) {
-            submitListener.onReviewSubmitted(author, currentDestination, rating, title, comment);
+        if (submitListener == null
+                || !submitListener.onReviewSubmitted(currentDestination, rating, title, comment)) {
+            if (submitListener == null) {
+                error.setText("⚠  Reviews are unavailable right now. Please try again.");
+            }
+            return false;
         }
+
+        reviews.removeIf(review -> review.destination.equalsIgnoreCase(currentDestination)
+                && review.author.equalsIgnoreCase(accountName));
+        reviews.add(0, new Review(accountName, currentDestination, rating, title, comment));
+        refreshList();
         return true;
     }
 

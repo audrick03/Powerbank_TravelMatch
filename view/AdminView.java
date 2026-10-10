@@ -3,16 +3,21 @@ package view;
 import controller.AdminController;
 
 import javax.swing.*;
+import javax.swing.text.Document;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
+import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.function.Predicate;
 
 public class AdminView extends JFrame {
+    private static final int MAX_TEXT_LENGTH = 255;
+
     private JTextField txtName;
     private JTextField txtLocation;
     private JTextField txtFee;
@@ -75,7 +80,17 @@ public class AdminView extends JFrame {
                 "--- Select Category ---", "Beach", "Mountain", "City", "Cultural", "Adventure"
         });
 
-        addNumberValidation(txtFee);
+        addInputValidation(txtName, text -> text.isEmpty()
+                || isValidNameOrLocation(text));
+        addInputValidation(txtLocation, text -> text.isEmpty()
+                || isValidNameOrLocation(text));
+        addInputValidation(txtFee, text -> text.length() <= MAX_TEXT_LENGTH
+                && (text.isEmpty() || text.matches("\\d*")));
+        addInputValidation(txtDescription, text -> text.codePointCount(0, text.length())
+                <= MAX_TEXT_LENGTH);
+        addInputValidation(txtTravelTips, AdminView::isWithinLineLengthLimit);
+        addInputValidation(txtWhatToBring, AdminView::isWithinLineLengthLimit);
+        addInputValidation(txtRecommendedPlaces, AdminView::isWithinLineLengthLimit);
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(Color.WHITE);
@@ -84,24 +99,29 @@ public class AdminView extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.NORTHWEST;
 
-        addField(form, gbc, "Destination Name:", txtName, 0);
-        addField(form, gbc, "Location / Province:", txtLocation, 1);
-        addField(form, gbc, "Description:", new JScrollPane(txtDescription), 2);
+        addField(form, gbc, "Destination Name (max 255):", txtName, 0);
+        addField(form, gbc, "Location / Province (max 255):", txtLocation, 1);
+        addField(form, gbc, "Description (max 255):", new JScrollPane(txtDescription), 2);
         addField(form, gbc, "Region:", cmbRegion, 3);
         addField(form, gbc, "Category:", cmbCategory, 4);
         addField(form, gbc, "Fee per person:", txtFee, 5);
+        
         JPanel monthRange = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         monthRange.setOpaque(false);
         monthRange.add(cmbStartMonth);
         monthRange.add(new JLabel("-"));
         monthRange.add(cmbEndMonth);
+
         addField(form, gbc, "Best Time to Visit (Month range):", monthRange, 6);
         addField(form, gbc, "Recommended Duration:", cmbDuration, 7);
         addField(form, gbc, "Difficulty:", cmbDifficulty, 8);
-        addField(form, gbc, "Travel Tips (one per line):", new JScrollPane(txtTravelTips), 9);
-        addField(form, gbc, "What to Bring (one per line):", new JScrollPane(txtWhatToBring), 10);
+        addField(form, gbc, "Travel Tips (one per line, max 255 each):",
+                new JScrollPane(txtTravelTips), 9);
+        addField(form, gbc, "What to Bring (one per line, max 255 each):",
+                new JScrollPane(txtWhatToBring), 10);
         addField(form, gbc,
-                "<html>Recommended Places:<br><small>One per line; use | before a description</small></html>",
+                "<html>Recommended Places:<br><small>One per line; max 255 each; "
+                        + "use | before a description</small></html>",
                 new JScrollPane(txtRecommendedPlaces), 11);
         gbc.gridx = 0;
         gbc.gridy = 12;
@@ -174,24 +194,72 @@ public class AdminView extends JFrame {
         panel.add(field, gbc);
     }
 
-    private void addNumberValidation(JTextField field) {
-        ((AbstractDocument) field.getDocument()).setDocumentFilter(new DocumentFilter() {
+    private void addInputValidation(JTextComponent component, Predicate<String> isValid) {
+        ((AbstractDocument) component.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass bypass, int offset, String text,
                                      AttributeSet attributes) throws BadLocationException {
-                if (text != null && text.matches("\\d*")) {
-                    super.insertString(bypass, offset, text, attributes);
-                }
+                replaceIfValid(bypass, offset, 0, text, attributes, isValid);
             }
 
             @Override
             public void replace(FilterBypass bypass, int offset, int length, String text,
                                 AttributeSet attributes) throws BadLocationException {
-                if (text != null && text.matches("\\d*")) {
-                    super.replace(bypass, offset, length, text, attributes);
-                }
+                replaceIfValid(bypass, offset, length, text, attributes, isValid);
+            }
+
+            @Override
+            public void remove(FilterBypass bypass, int offset, int length)
+                    throws BadLocationException {
+                replaceIfValid(bypass, offset, length, "", null, isValid);
             }
         });
+    }
+
+    private static boolean isValidNameOrLocation(String value) {
+        if (value == null || value.isBlank()
+                || value.codePointCount(0, value.length()) > MAX_TEXT_LENGTH
+                || value.codePoints().noneMatch(Character::isLetter)) {
+            return false;
+        }
+        return value.codePoints().allMatch(codePoint -> Character.isLetter(codePoint)
+                || codePoint == ' '
+                || Character.getType(codePoint) == Character.NON_SPACING_MARK
+                || Character.getType(codePoint) == Character.COMBINING_SPACING_MARK
+                || Character.getType(codePoint) == Character.ENCLOSING_MARK
+                || Character.getType(codePoint) == Character.CONNECTOR_PUNCTUATION
+                || Character.getType(codePoint) == Character.DASH_PUNCTUATION
+                || Character.getType(codePoint) == Character.START_PUNCTUATION
+                || Character.getType(codePoint) == Character.END_PUNCTUATION
+                || Character.getType(codePoint) == Character.INITIAL_QUOTE_PUNCTUATION
+                || Character.getType(codePoint) == Character.FINAL_QUOTE_PUNCTUATION
+                || Character.getType(codePoint) == Character.OTHER_PUNCTUATION);
+    }
+
+    private static boolean isWithinLineLengthLimit(String value) {
+        if (value == null) {
+            return false;
+        }
+        for (String line : value.split("\\R", -1)) {
+            if (line.codePointCount(0, line.length()) > MAX_TEXT_LENGTH) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void replaceIfValid(DocumentFilter.FilterBypass bypass,
+                                       int offset, int length, String insertedText,
+                                       AttributeSet attributes, Predicate<String> isValid)
+            throws BadLocationException {
+        Document document = bypass.getDocument();
+        String current = document.getText(0, document.getLength());
+        String insertion = insertedText == null ? "" : insertedText;
+        String candidate = current.substring(0, offset) + insertion
+                + current.substring(offset + length);
+        if (isValid.test(candidate)) {
+            bypass.replace(offset, length, insertion, attributes);
+        }
     }
 
     public void clearFields() {
@@ -231,6 +299,9 @@ public class AdminView extends JFrame {
                 && cmbDifficulty.getSelectedIndex() > 0
                 && cmbRegion.getSelectedIndex() > 0
                 && cmbCategory.getSelectedIndex() > 0;
+    }
+    public boolean hasValidMonthRange() {
+        return cmbStartMonth.getSelectedIndex() < cmbEndMonth.getSelectedIndex();
     }
 
     public void addDestinationListener(ActionListener listener) {

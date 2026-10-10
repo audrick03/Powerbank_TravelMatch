@@ -170,7 +170,7 @@ public class HomeView extends JFrame {
     // =========================
 
     private JScrollPane createHomePage() {
-        JPanel content = new JPanel();
+        ViewportWidthPanel content = new ViewportWidthPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBackground(BACKGROUND);
 
@@ -188,7 +188,7 @@ public class HomeView extends JFrame {
     }
 
     private JScrollPane createDiscoverPage() {
-        JPanel page = new JPanel(new BorderLayout(0, 15));
+        ViewportWidthPanel page = new ViewportWidthPanel(new BorderLayout(0, 15));
         page.setBackground(BACKGROUND);
         page.setBorder(new EmptyBorder(20, 30, 20, 30));
 
@@ -425,12 +425,19 @@ public class HomeView extends JFrame {
         // HTML lets long names wrap onto extra lines
         JLabel lblName = new JLabel(
                 "<html><body style='width:200px'>"
-                + name.replace("&", "&amp;")
-                + "</body></html>"
-        );
+                        + name.replace("&", "&amp;")
+                        + "</body></html>");
         lblName.setFont(new Font(FONT_NAME, Font.BOLD, 17));
         lblName.setForeground(TEXT_DARK);
         lblName.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                int textWidth = Math.max(100, info.getWidth() - 32);
+                lblName.setText("<html><body style='width:" + textWidth + "px'>"
+                        + name.replace("&", "&amp;") + "</body></html>");
+            }
+        });
 
         JPanel badgeRow = new JPanel(
                 new FlowLayout(FlowLayout.LEFT, 6, 0)
@@ -600,12 +607,19 @@ public class HomeView extends JFrame {
         lblName.setFont(new Font(FONT_NAME, Font.BOLD, 22));
         lblName.setForeground(TEXT_DARK);
 
+        String description = DestinationRepository.regionDescription(region);
         JLabel lblDesc = new JLabel(
-                "<html><body style='width:260px'>"
-                + DestinationRepository.regionDescription(region)
-                + "</body></html>");
+                "<html><body style='width:260px'>" + description + "</body></html>");
         lblDesc.setFont(new Font(FONT_NAME, Font.PLAIN, 14));
         lblDesc.setForeground(TEXT_MUTED);
+        card.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                int textWidth = Math.max(140, infoPanel.getWidth() - 32);
+                lblDesc.setText("<html><body style='width:" + textWidth + "px'>"
+                        + description + "</body></html>");
+            }
+        });
 
         JLabel lblCount = new JLabel(DEFAULT_COUNT_TEXT);
         lblCount.setFont(new Font(FONT_NAME, Font.BOLD, 13));
@@ -726,36 +740,41 @@ public class HomeView extends JFrame {
     // CUSTOM COMPONENTS
     // =====================================================
     private int getColumnCount() {
-
-    int width = getWidth();
-
-    if(width >= 1400)
-        return 3;
-
-    if(width >= 900)
-        return 2;
-
-    return 1;
+        int width = discoverScroll == null
+                ? getWidth() : discoverScroll.getViewport().getWidth();
+        return Math.max(1, Math.min(4, (width + 22) / 262));
     }
 
     private void updateResponsiveLayout() {
-
-    int cols = getColumnCount();
-
-    if(regionCardsPanel != null) {
-        regionCardsPanel.setLayout(
-            new GridLayout(0, cols, 22, 22)
-        );
+        int discoverColumns = getColumnCount();
+        if (regionCardsPanel != null) {
+            int width = homeScroll == null
+                    ? getWidth() : homeScroll.getViewport().getWidth();
+            int regionColumns = Math.max(1, Math.min(3, (width + 22) / 322));
+            regionCardsPanel.setLayout(new GridLayout(0, regionColumns, 22, 22));
+        }
+        if (destinationCardsPanel != null) {
+            destinationCardsPanel.setLayout(new GridLayout(0, discoverColumns, 22, 22));
+        }
+        revalidate();
+        repaint();
     }
 
-    if(destinationCardsPanel != null) {
-        destinationCardsPanel.setLayout(
-            new GridLayout(0, cols, 22, 22)
-        );
-    }
+    private static class ViewportWidthPanel extends JPanel implements Scrollable {
+        ViewportWidthPanel() { super(); }
+        ViewportWidthPanel(LayoutManager layout) { super(layout); }
 
-    revalidate();
-    repaint();
+        @Override public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+        @Override public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+        @Override public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(16, visibleRect.height - 40);
+        }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
     }
     // Panel that paints an image scaled to "cover" its area,
     // with an optional color overlay on top.
